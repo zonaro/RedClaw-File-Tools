@@ -62,9 +62,20 @@ for row in PACKAGES.values():
 
 
 def package_manager() -> str | None:
-    for name, binary in (("apt", "apt-get"), ("dnf", "dnf"), ("pacman", "pacman"), ("zypper", "zypper")):
+    release = Path("/etc/os-release")
+    info = release.read_text(errors="replace").lower() if release.is_file() else ""
+    preferences = [
+        ("pacman", "pacman", ("arch", "cachyos", "manjaro", "endeavouros")),
+        ("apt", "apt-get", ("debian", "ubuntu", "mint", "pop")),
+        ("dnf", "dnf", ("fedora", "rhel", "centos", "rocky", "nobara")),
+        ("zypper", "zypper", ("suse",)),
+    ]
+    for manager, binary, hints in preferences:
+        if any(hint in info for hint in hints) and shutil.which(binary):
+            return manager
+    for manager, binary, _ in preferences:
         if shutil.which(binary):
-            return name
+            return manager
     return None
 
 
@@ -145,7 +156,7 @@ def install_dependencies(plan: dict) -> None:
         if not pkexec:
             raise RuntimeError("Polkit (pkexec) is required to install system dependencies.")
         command = [pkexec, *command]
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
     remaining = [key for key in plan["missing"] if not available(key)]
     if remaining:
         raise RuntimeError("Dependencies still missing after installation: " + ", ".join(remaining))
