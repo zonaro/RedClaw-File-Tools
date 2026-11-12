@@ -234,42 +234,108 @@ def _effective_theme_name():
     return theme
 
 
+def _svg_text_from_file(path):
+    """SVG text of ``path`` ('' when unreadable or not an SVG)."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except Exception:
+        return ""
+    return text if "<svg" in text else ""
+
+
+#: Theme names we are willing to look up on disk. Restricts ``Inherits=``
+#: entries read from third-party ``index.theme`` files to plain names, so a
+#: hostile or corrupt theme cannot point us at an arbitrary path.
+_SAFE_THEME_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _places_size_rank(path):
+    """Sort key for a 'places' directory: 'scalable' beats any fixed size.
+
+    Theme families lay their folder icon out differently — Adwaita in
+    ``scalable/places``, breeze in ``places/48``, elementary in
+    ``places/128``, Papirus in ``128x128/places``, Numix in ``16/places`` —
+    so the size is read from whichever path component carries it.
+    """
+    best = 0
+    for part in str(path).split(os.sep):
+        if part == "scalable":
+            return 100000
+        match = re.match(r"^(\d+)x\d+", part)
+        if match:
+            best = max(best, int(match.group(1)))
+        elif part.isdigit():
+            best = max(best, int(part))
+    return best
+
+
+def _inherited_theme_names(theme_dir):
+    """'Inherits=' entries of a theme's index.theme, in order."""
+    try:
+        with open(os.path.join(theme_dir, "index.theme"), "r",
+                  encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.strip().lower().startswith("inherits"):
+                    _, _, value = line.partition("=")
+                    return [part.strip() for part in value.split(",")
+                            if part.strip()]
+    except OSError:
+        pass
+    return []
+
+
+def _theme_chain(theme, limit=8):
+    """``theme`` followed by the themes it inherits, breadth-first.
+
+    A theme may carry no folder icon of its own: Yaru-dark ships none and
+    inherits Yaru, Numix-Circle inherits Numix. Following ``Inherits=``
+    finds the shape exactly where the icon loader finds it, instead of
+    falling back to the generic folder.
+    """
+    chain = []
+    pending = [str(theme or "")]
+    while pending and len(chain) < limit:
+        name = pending.pop(0)
+        if not name or name in chain or not _SAFE_THEME_NAME_RE.match(name):
+            continue
+        chain.append(name)
+        for theme_dir in _theme_dir_candidates(name):
+            pending.extend(_inherited_theme_names(theme_dir))
+    return chain
+
+
+def _folder_svg_in_theme(theme):
+    """Path of ``theme``'s own 'folder.svg' (largest 'places' dir wins)."""
+    best = ""
+    best_key = (-1, "", "")
+    for theme_dir in _theme_dir_candidates(theme):
+        for root, _dirs, files in os.walk(theme_dir):
+            if "places" not in root.split(os.sep) or "folder.svg" not in files:
+                continue
+            key = (_places_size_rank(root), root)
+            if key > best_key[:2]:
+                best_key = (key[0], key[1], "")
+                best = os.path.join(root, "folder.svg")
+    return best
+
+
 def _theme_folder_svg_text(theme=None):
     """Raw SVG text of a theme's 'folder' icon, or ''.
 
-    Filesystem lookup inside the theme's own dirs only — never the display
-    fallback chain (which would silently return another theme). ``theme``
-    defaults to the effective theme (the current one, or the base theme when
-    a derived theme is active).
+    Filesystem lookup inside the theme's own dirs (and the themes it
+    inherits) — never the display fallback chain, which would silently
+    return an unrelated theme. ``theme`` defaults to the effective theme
+    (the current one, or the base theme when a derived theme is active).
     """
     name = theme if theme else _effective_theme_name()
-    for theme_dir in _theme_dir_candidates(name):
-        scalable = os.path.join(theme_dir, "scalable", "places", "folder.svg")
-        if os.path.isfile(scalable):
-            try:
-                with open(scalable, "r", encoding="utf-8", errors="replace") as f:
-                    text = f.read()
-                if "<svg" in text:
-                    return text
-            except Exception:
-                continue
-        places = os.path.join(theme_dir, "places")
-        if not os.path.isdir(places):
+    for candidate in _theme_chain(name):
+        found = _folder_svg_in_theme(candidate)
+        if not found:
             continue
-        try:
-            sizes = sorted(os.listdir(places), reverse=True)
-        except Exception:
-            continue
-        for size in sizes:
-            sized = os.path.join(places, size, "folder.svg")
-            if os.path.isfile(sized):
-                try:
-                    with open(sized, "r", encoding="utf-8", errors="replace") as f:
-                        text = f.read()
-                    if "<svg" in text:
-                        return text
-                except Exception:
-                    continue
+        text = _svg_text_from_file(found)
+        if text:
+            return text
     return ""
 
 
@@ -323,12 +389,17 @@ def _find_variant_png(theme_dir):
 
 
 def _current_theme_png_path(theme=None):
-    """A colored folder PNG variant from a theme's dirs, or ''."""
+    """A colored folder PNG variant from a theme's dirs, or ''.
+
+    Follows ``Inherits=`` like the SVG lookup: Yaru-dark ships no colored
+    folder PNG of its own and inherits the Yaru ones.
+    """
     name = theme if theme else _effective_theme_name()
-    for theme_dir in _theme_dir_candidates(name):
-        found = _find_variant_png(theme_dir)
-        if found:
-            return found
+    for candidate in _theme_chain(name):
+        for theme_dir in _theme_dir_candidates(candidate):
+            found = _find_variant_png(theme_dir)
+            if found:
+                return found
     return ""
 
 
@@ -376,21 +447,64 @@ def _tint_svg(svg_text, hex_color):
 _SHAPE_TAGS = {"path", "rect", "circle", "ellipse", "polygon", "polyline"}
 _URL_RE = re.compile(r"url\(\s*#([^)]+?)\s*\)")
 _HEX_RE = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![0-9a-fA-F])")
+_STYLE_BLOCK_RE = re.compile(r"(<style[^>]*>)(.*?)(</style>)", re.S)
+_CSS_COLOR_RE = re.compile(r"color:\s*#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})")
+_XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+#: Lower bound of the lightness ramp. A source pixel at pure black still
+#: receives this fraction of the target instead of collapsing to black;
+#: without it, icons painted with ``#000000`` stayed untinted.
+_TINT_FLOOR = 0.35
 
 
 def _tint_one_color(hex_digits, target):
-    """Multiply-tint a hex paint color with the target color."""
+    """Map a source paint colour onto the target, keeping relative shading.
+
+    The source luminance drives a ramp bounded by ``_TINT_FLOOR``: a white
+    source becomes the target, mid greys become darker shades of it, and pure
+    black becomes a dark shade rather than staying black.
+    """
     if len(hex_digits) == 3:
         hex_digits = "".join(c * 2 for c in hex_digits)
-    gray = _luminance(hex_digits) / 255.0
+    ratio = _TINT_FLOOR + (1.0 - _TINT_FLOOR) * (_luminance(hex_digits) / 255.0)
     try:
         tr, tg, tb = (int(target[i:i + 2], 16) for i in (0, 2, 4))
     except ValueError:
         return None
     return "#{:02x}{:02x}{:02x}".format(
-        max(0, min(255, round(tr * gray))),
-        max(0, min(255, round(tg * gray))),
-        max(0, min(255, round(tb * gray))))
+        max(0, min(255, round(tr * ratio))),
+        max(0, min(255, round(tg * ratio))),
+        max(0, min(255, round(tb * ratio))))
+
+
+def _tint_css_style_blocks(svg_text, target):
+    """Tint ``color:#hex`` declarations inside every ``<style>`` block.
+
+    Monochrome themes (breeze, Papirus, Numix) paint their shapes with
+    ``fill:currentColor`` and declare the real colour in CSS classes such as
+    ``.ColorScheme-Accent { color: #3daee9; }``. Rewriting the class colour
+    makes ``currentColor`` resolve to the target.
+    """
+    def tint_declaration(match):
+        tinted = _tint_one_color(match.group(1), target)
+        return "color:" + tinted if tinted else match.group(0)
+
+    def tint_block(match):
+        body = _CSS_COLOR_RE.sub(tint_declaration, match.group(2))
+        return match.group(1) + body + match.group(3)
+
+    return _STYLE_BLOCK_RE.sub(tint_block, svg_text)
+
+
+def _tint_style_declaration(element, prop, target):
+    """Tint the first ``prop:#hex`` declaration inside an element's style."""
+    style = element.get("style") or ""
+    match = re.search(r"%s:\s*#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})" % prop, style)
+    if not match:
+        return
+    tinted = _tint_one_color(match.group(1), target)
+    if not tinted:
+        return
+    element.set("style", style[:match.start(1)] + tinted[1:] + style[match.end(1):])
 
 
 def _svg_shapes(svg_text):
@@ -407,65 +521,87 @@ def _svg_shapes(svg_text):
 
 
 def _tint_svg_multi(svg_text, hex_list):
-    """Tint a theme SVG with one color per shape (first shape -> 1st color).
+    """Tint a theme SVG with one colour per shape (first shape -> 1st colour).
 
     Shape i uses hex_list[min(i, len-1)]: with two shapes/colors the back
     takes color 1 and everything else color 2; extra shapes share the last
-    color. Gradient stops referenced via url(#id) are tinted with their
-    shape's color, preserving shading. Works with any theme SVG.
+    color. Handles the three ways real themes paint a folder: a plain
+    ``fill="#hex"``, a ``fill="url(#grad)"`` (gradient stops tinted, following
+    ``xlink:href`` chains whose stops live in a referenced gradient), and
+    ``fill:currentColor`` backed by a CSS class colour (tinted up-front by
+    ``_tint_css_style_blocks``). Works with any theme SVG.
     """
     targets = [str(h).lstrip("#")[:6].lower() for h in hex_list]
     if (not targets or any(len(t) != 6
             or any(c not in "0123456789abcdef" for c in t) for t in targets)):
         return ""
-    root, shapes = _svg_shapes(svg_text)
+    root, shapes = _svg_shapes(_tint_css_style_blocks(svg_text, targets[0]))
     if root is None or not shapes:
         return ""
-    gradients = {}
-    for el in root.iter():
-        if el.tag in ("linearGradient", "radialGradient") and el.get("id"):
-            gradients[el.get("id").strip()] = el
+    gradients = {el.get("id"): el for el in root.iter()
+                 if el.tag in ("linearGradient", "radialGradient") and el.get("id")}
 
-    def tinted_paint(value, target):
-        """Tint a fill/stop-color value, preserving url()/none/currentColor."""
+    def gradient_with_stops(gradient_id, seen=None):
+        """The gradient actually carrying <stop>s, following href links.
+
+        elementary paints ``fill:url(#A)`` where A only carries a
+        ``xlink:href="#B"`` and B holds the stops; without following the
+        chain the icon came out unchanged.
+        """
+        seen = seen if seen is not None else set()
+        element = gradients.get(gradient_id)
+        while element is not None and gradient_id not in seen:
+            seen.add(gradient_id)
+            if any(child.tag == "stop" for child in element.iter()):
+                return element
+            reference = (element.get(_XLINK_HREF)
+                         or element.get("href") or "").lstrip("#")
+            gradient_id, element = reference, gradients.get(reference)
+        return None
+
+    def tint_gradient(gradient_id, target):
+        gradient = gradient_with_stops(gradient_id)
+        if gradient is None:
+            return
+        for stop in gradient.iter():
+            if stop.tag != "stop":
+                continue
+            stop_color = (stop.get("stop-color") or "").strip()
+            match = _HEX_RE.search(stop_color)
+            if match:
+                tinted = _tint_one_color(match.group(1), target)
+                if tinted:
+                    stop.set("stop-color", tinted)
+            if "stop-color" in (stop.get("style") or ""):
+                _tint_style_declaration(stop, "stop-color", target)
+
+    def tint_fill(shape, value, target):
+        """Tint a fill value: a hex, a url(#id), or anything else (skip)."""
         url_match = _URL_RE.search(value or "")
         if url_match:
-            return None, url_match.group(1)
+            tint_gradient(url_match.group(1), target)
+            return
         hex_match = _HEX_RE.search(value or "")
         if hex_match:
-            return _tint_one_color(hex_match.group(1), target), None
-        return None, None
-
-    def apply_style(element, target):
-        """Tint fill:/stop-color: declarations inside a style attribute."""
-        style = element.get("style") or ""
-        if "fill" not in style and "stop-color" not in style:
-            return
-        tinted, _ = tinted_paint(style, target)
-        if tinted:
-            try:
-                element.set("style", _HEX_RE.sub(tinted, style, count=1))
-            except Exception:
-                pass
+            tinted = _tint_one_color(hex_match.group(1), target)
+            if tinted:
+                shape.set("fill", tinted)
 
     last = len(targets) - 1
     for index, shape in enumerate(shapes):
         target = targets[min(index, last)]
-        tinted, gradient_id = tinted_paint((shape.get("fill") or "").strip(), target)
-        if tinted:
-            shape.set("fill", tinted)
-        elif gradient_id:
-            gradient = gradients.get(gradient_id)
-            if gradient is not None:
-                for stop in gradient.iter():
-                    if stop.tag != "stop":
-                        continue
-                    stop_tinted, _ = tinted_paint(
-                        (stop.get("stop-color") or "").strip(), target)
-                    if stop_tinted:
-                        stop.set("stop-color", stop_tinted)
-                    apply_style(stop, target)
-        apply_style(shape, target)
+        style = shape.get("style") or ""
+        fill_value = (shape.get("fill") or "").strip()
+        if not fill_value and style:
+            match = re.search(r"fill:\s*([^;]+)", style)
+            if match:
+                fill_value = match.group(1).strip()
+        tint_fill(shape, fill_value, target)
+        # gradient/stop references that live inside the style attribute
+        for url_match in _URL_RE.finditer(style):
+            tint_gradient(url_match.group(1), target)
+        if "fill:" in style:
+            _tint_style_declaration(shape, "fill", target)
     try:
         return ET.tostring(root, encoding="unicode")
     except Exception as e:
@@ -3067,88 +3203,12 @@ class FolderColorMenu(GObject.GObject, Nautilus.MenuProvider):
         return True
 
     def _show_menu(self, items):
-        colors     = self.foldercolor.get_colors_theme()
-        emblems    = self.foldercolor.get_emblems_theme()
-        is_modified = self.foldercolor.get_is_modified(items)
-
-        if self.all_dirs and colors:
-            top_menuitem = Nautilus.MenuItem(
-                name="FolderColorMenu::customize", label=CUSTOMIZE, icon="color-picker")
-        elif emblems:
-            top_menuitem = Nautilus.MenuItem(
-                name="FolderColorMenu::colors", label=EMBLEM, icon="color-picker")
-        else:
-            return []
-
-        submenu = Nautilus.Menu()
-        top_menuitem.set_submenu(submenu)
-
-        # Couleurs
-        if self.all_dirs:
-            for color in colors:
-                item = Nautilus.MenuItem(
-                    name="FolderColorMenu::color_" + color["icon"],
-                    label=color["label"],
-                    icon=color["icon"],
-                )
-                item.connect("activate", self._menu_activate_color, items, color)
-                submenu.append_item(item)
-
-            if _ICON_EDITOR_AVAILABLE:
-                item = Nautilus.MenuItem(
-                    name="FolderColorMenu::customize_icon",
-                    label=CUSTOMIZE_ICON_LABEL,
-                    icon="color-picker",
-                )
-                item.connect("activate", self._menu_activate_custom_color, items)
-                submenu.append_item(item)
-
-                item = Nautilus.MenuItem(
-                    name="FolderColorMenu::detect_icon",
-                    label=_("Detect icon…"),
-                    icon="edit-find",
-                )
-                item.connect("activate", self._menu_activate_detect_icon, items)
-                submenu.append_item(item)
-
-                # "Reapply last icon" (#37): fastest way to copy the most
-                # recently generated icon to another folder. Hidden when the
-                # gallery is empty so it never adds a dead entry.
-                if _gallery_latest() is not None:
-                    item = Nautilus.MenuItem(
-                        name="FolderColorMenu::reapply_last",
-                        label=_("Reapply last icon"),
-                        icon="edit-redo",
-                    )
-                    item.connect("activate",
-                                 self._menu_activate_reapply_last, items)
-                    submenu.append_item(item)
-
-        # Emblèmes
-        if emblems:
-            if self.all_dirs and colors:
-                submenu.append_item(Nautilus.MenuItem(
-                    name="FolderColorMenu::sep_emblems",
-                    label="―――", sensitive=False))
-            for emblem in emblems:
-                item = Nautilus.MenuItem(
-                    name="FolderColorMenu::emblem_" + emblem["icon"],
-                    label=emblem["label"],
-                    icon=emblem["icon"],
-                )
-                item.connect("activate", self._menu_activate_emblem, items, emblem)
-                submenu.append_item(item)
-
-        # Restaurer
-        if is_modified:
-            submenu.append_item(Nautilus.MenuItem(
-                name="FolderColorMenu::sep_restore",
-                label="―――", sensitive=False))
-            item = Nautilus.MenuItem(
-                name="FolderColorMenu::restore",
-                label=_("Default"), icon="undo")
-            item.connect("activate", self._menu_activate_restore, items)
-            submenu.append_item(item)
+        # O item "Personalizar…" não depende dos ícones de cor do tema
+        # (o editor gera o próprio SVG a partir do folder do tema), então
+        # ele aparece mesmo em temas sem folder-* — ex.: Adwaita puro.
+        top_menuitem = Nautilus.MenuItem(
+            name="FolderColorMenu::customize", label=CUSTOMIZE, icon="color-picker")
+        top_menuitem.connect("activate", self._menu_activate_custom_color, items)
 
         return (top_menuitem,)
 

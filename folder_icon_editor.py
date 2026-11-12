@@ -3445,8 +3445,25 @@ class _Editor:
             swatch.set_name("%s-palette-%s" % (self._css_id, name))
             swatch.connect("clicked", self._on_palette_color, hex_color)
             palette_flow.append(swatch)
-        custom_button = Gtk.Button(label=self.tr("Custom colour…"))
+        custom_button = Gtk.Button()
+        # Icon-only compact button so the whole palette (label + 9 swatches +
+        # this control) fits on a SINGLE line even at the minimum 520px width.
+        # The full label is kept as the accessible name / tooltip so screen
+        # readers still announce "Custom colour…".
+        custom_button.set_child(
+            Gtk.Image.new_from_icon_name("color-select-symbolic"))
+        custom_button.set_tooltip_text(self.tr("Custom colour…"))
+        try:
+            custom_button.update_property(
+                [Gtk.AccessibleProperty.LABEL],
+                [self.tr("Custom colour…")])
+        except Exception:
+            pass
         custom_button.connect("clicked", self._on_custom_colour)
+        custom_button.set_valign(Gtk.Align.CENTER)
+        custom_button.set_halign(Gtk.Align.CENTER)
+        custom_button.set_can_focus(False)
+        custom_button.add_css_class("color-button")
         palette_flow.append(custom_button)
         palette_row.append(palette_flow)
         box.append(palette_row)

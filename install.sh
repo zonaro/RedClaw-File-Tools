@@ -5,8 +5,15 @@
 #
 # Installs selected extensions per-user into
 #   ~/.local/share/nautilus-python/extensions
-# and auto-detects the package manager (apt / dnf / pacman / zypper), installing
-# only the dependencies required by the extensions you pick.
+# and auto-detects the package manager, installing only the dependencies
+# required by the extensions you pick. Detection order:
+#   apt (Debian/Ubuntu) · dnf (Fedora) · pacman (Arch/CachyOS) · zypper (openSUSE)
+#   apk (Alpine) · xbps-install (Void) · eopkg (Solus)
+# On anything else the extensions are still copied; nothing is installed
+# automatically, and a verification report at the end lists exactly what is
+# missing and the probable package names to look for.
+# Packages that were renamed across distros are tried under several names
+# (e.g. p7zip -> 7zip), and a single failing candidate never aborts the install.
 #
 # One-liner (installs everything, same as before):
 #   curl -fsSL https://raw.githubusercontent.com/zonaro/Nautilus-Extensions/main/install.sh | bash
@@ -133,8 +140,8 @@ slug_files() {
 # Logical dependency keys for a given slug (always plus the shared base keys).
 slug_deps() {
   case "$1" in
-    archive-browser|extract-here) echo "libarchive-c p7zip p7zip-plugins unrar";;
-    comic-tools)                  echo "p7zip p7zip-plugins unrar";;
+    archive-browser|extract-here) echo "libarchive-c p7zip unrar";;
+    comic-tools)                  echo "p7zip unrar";;
     clone-repository)             echo "git";;
     compress-pdf)                 echo "ghostscript pypdf";;
     dual-panel)                   echo "rsync";;
@@ -270,11 +277,25 @@ elif command -v pacman >/dev/null 2>&1; then
   PKG_MANAGER="pacman"
 elif command -v zypper >/dev/null 2>&1; then
   PKG_MANAGER="zypper"
+elif command -v apk >/dev/null 2>&1; then
+  PKG_MANAGER="apk"
+elif command -v xbps-install >/dev/null 2>&1; then
+  PKG_MANAGER="xbps"
+elif command -v eopkg >/dev/null 2>&1; then
+  PKG_MANAGER="eopkg"
+else
+  # Unknown distro: nothing is installed automatically, but the extensions
+  # are still copied and the final verification reports exactly what is
+  # missing and the probable package name to look for.
+  PKG_MANAGER="unknown"
 fi
-[ -n "$PKG_MANAGER" ] || die "Unsupported distribution: no apt-get, dnf, pacman or zypper found."
 
-# Map a logical dependency key to the distro package name (empty = not needed).
-pkg_name() {
+# Map a logical dependency key to distro package name(s) — space-separated,
+# best candidate first, empty = not needed. Several candidates serve as
+# fallback because distros rename packages (p7zip -> 7zip everywhere, for
+# example). The maps for apk, xbps and eopkg are best-effort: the final
+# verification step prints whatever is still missing.
+pkg_candidates() {
   case "$PKG_MANAGER" in
     apt)
       case "$1" in
@@ -292,43 +313,39 @@ pkg_name() {
         pillow)              echo "python3-pil";;
         mutagen)             echo "python3-mutagen";;
         libarchive-c)        echo "python3-libarchive-c";;
-        p7zip)               echo "p7zip-full";;
-        p7zip-plugins)       echo "";;
+        p7zip)               echo "7zip p7zip-full p7zip";;
         poppler)             echo "poppler-utils";;
         rsync)               echo "rsync";;
         ripgrep)             echo "ripgrep";;
         git)                 echo "git";;
         unrar)               echo "unrar";;
-        *)                   echo "";;
       esac;;
     dnf)
       case "$1" in
         nautilus-python)     echo "nautilus-python";;
-        gobject)             echo "python3-gobject";;
+        gobject)             echo "python3-gobject python3-gobject3";;
         gtk4)                echo "gtk4";;
         libadwaita)          echo "libadwaita";;
         nautilus-extensions) echo "nautilus-extensions";;
         ghostscript)         echo "ghostscript";;
         ffmpeg)              echo "ffmpeg";;
         ffmpegthumbnailer)   echo "ffmpegthumbnailer";;
-        pypdf)               echo "python3-pypdf";;
+        pypdf)               echo "python3-pypdf python3-PyPDF2";;
         cairo)               echo "python3-cairo";;
-        pangocairo)          echo "pango";;
+        pangocairo)          echo "pango pango-devel";;
         pillow)              echo "python3-pillow";;
         mutagen)             echo "python3-mutagen";;
         libarchive-c)        echo "python3-libarchive-c";;
-        p7zip)               echo "7zip";;
-        p7zip-plugins)       echo "";;
+        p7zip)               echo "7zip p7zip";;
         poppler)             echo "poppler-utils";;
         rsync)               echo "rsync";;
         ripgrep)             echo "ripgrep";;
         git)                 echo "git";;
         unrar)               echo "unrar";;
-        *)                   echo "";;
       esac;;
     pacman)
       case "$1" in
-        nautilus-python)     echo "python-nautilus";;
+        nautilus-python)     echo "nautilus-python python-nautilus";;
         gobject)             echo "python-gobject";;
         gtk4)                echo "gtk4";;
         libadwaita)          echo "libadwaita";;
@@ -342,42 +359,126 @@ pkg_name() {
         pillow)              echo "python-pillow";;
         mutagen)             echo "python-mutagen";;
         libarchive-c)        echo "python-libarchive-c";;
-        p7zip)               echo "p7zip";;
-        p7zip-plugins)       echo "";;
+        p7zip)               echo "7zip p7zip";;
         poppler)             echo "poppler";;
         rsync)               echo "rsync";;
         ripgrep)             echo "ripgrep";;
         git)                 echo "git";;
         unrar)               echo "unrar";;
-        *)                   echo "";;
       esac;;
     zypper)
       case "$1" in
         nautilus-python)     echo "python3-nautilus";;
+        gobject)             echo "python3-gobject python3-gobject3";;
+        gtk4)                echo "typelib-1_0-Gtk-4_0 gtk4";;
+        libadwaita)          echo "typelib-1_0-Adw-1 libadwaita";;
+        nautilus-extensions) echo "typelib-1_0-Nautilus-4_0 nautilus";;
+        ghostscript)         echo "ghostscript";;
+        ffmpeg)              echo "ffmpeg";;
+        ffmpegthumbnailer)   echo "ffmpegthumbnailer";;
+        pypdf)               echo "python3-pypdf python3-PyPDF2";;
+        cairo)               echo "python3-cairo";;
+        pangocairo)          echo "typelib-1_0-PangoCairo-1_0 pango";;
+        pillow)              echo "python3-Pillow python3-pillow";;
+        mutagen)             echo "python3-mutagen";;
+        libarchive-c)        echo "python3-libarchive-c";;
+        p7zip)               echo "7zip p7zip";;
+        poppler)             echo "poppler-tools poppler-utils";;
+        rsync)               echo "rsync";;
+        ripgrep)             echo "ripgrep";;
+        git)                 echo "git";;
+        unrar)               echo "unrar";;
+      esac;;
+    apk)
+      case "$1" in
+        nautilus-python)     echo "nautilus-python";;
+        gobject)             echo "py3-gobject3 pygobject3";;
+        gtk4)                echo "gtk4";;
+        libadwaita)          echo "libadwaita";;
+        nautilus-extensions) echo "nautilus";;
+        ghostscript)         echo "ghostscript";;
+        ffmpeg)              echo "ffmpeg";;
+        ffmpegthumbnailer)   echo "ffmpegthumbnailer";;
+        pypdf)               echo "py3-pypdf";;
+        cairo)               echo "py3-cairo cairo";;
+        pangocairo)          echo "pango";;
+        pillow)              echo "py3-pillow";;
+        mutagen)             echo "py3-mutagen";;
+        libarchive-c)        echo "py3-libarchive-c";;
+        p7zip)               echo "7zip p7zip";;
+        poppler)             echo "poppler-utils poppler-tools";;
+        rsync)               echo "rsync";;
+        ripgrep)             echo "ripgrep";;
+        git)                 echo "git";;
+        unrar)               echo "unrar";;
+      esac;;
+    xbps)
+      case "$1" in
+        nautilus-python)     echo "nautilus-python";;
         gobject)             echo "python3-gobject";;
-        gtk4)                echo "typelib-1_0-Gtk-4_0";;
-        libadwaita)          echo "typelib-1_0-Adw-1";;
-        nautilus-extensions) echo "typelib-1_0-Nautilus-4_0";;
+        gtk4)                echo "gtk4";;
+        libadwaita)          echo "libadwaita";;
+        nautilus-extensions) echo "nautilus";;
         ghostscript)         echo "ghostscript";;
         ffmpeg)              echo "ffmpeg";;
         ffmpegthumbnailer)   echo "ffmpegthumbnailer";;
         pypdf)               echo "python3-pypdf";;
         cairo)               echo "python3-cairo";;
-        pangocairo)          echo "typelib-1_0-PangoCairo-1_0";;
-        pillow)              echo "python3-Pillow";;
+        pangocairo)          echo "pango";;
+        pillow)              echo "python3-pillow";;
         mutagen)             echo "python3-mutagen";;
         libarchive-c)        echo "python3-libarchive-c";;
-        p7zip)               echo "p7zip";;
-        p7zip-plugins)       echo "";;
-        poppler)             echo "poppler-tools";;
+        p7zip)               echo "p7zip 7zip";;
+        poppler)             echo "poppler-utils";;
         rsync)               echo "rsync";;
         ripgrep)             echo "ripgrep";;
         git)                 echo "git";;
         unrar)               echo "unrar";;
-        *)                   echo "";;
       esac;;
-    *) echo "";;
+    eopkg)
+      case "$1" in
+        nautilus-python)     echo "nautilus-python";;
+        gobject)             echo "python-gobject";;
+        gtk4)                echo "gtk4";;
+        libadwaita)          echo "libadwaita";;
+        nautilus-extensions) echo "nautilus";;
+        ghostscript)         echo "ghostscript";;
+        ffmpeg)              echo "ffmpeg";;
+        ffmpegthumbnailer)   echo "ffmpegthumbnailer";;
+        pypdf)               echo "python-pypdf";;
+        cairo)               echo "python-cairo";;
+        pangocairo)          echo "pango";;
+        pillow)              echo "python-pillow";;
+        mutagen)             echo "python-mutagen";;
+        libarchive-c)        echo "python-libarchive-c";;
+        p7zip)               echo "p7zip 7zip";;
+        poppler)             echo "poppler-utils";;
+        rsync)               echo "rsync";;
+        ripgrep)             echo "ripgrep";;
+        git)                 echo "git";;
+        unrar)               echo "unrar";;
+      esac;;
   esac
+}
+
+# Install one candidate at a time so a single wrong/unavailable package name
+# does not sink the whole dependency step. Returns 0 when any candidate worked.
+try_key() {
+  local key="$1" cand
+  local cands
+  cands="$(pkg_candidates "$key")"
+  if [ -z "$cands" ]; then
+    warn "no package mapping for '$key' on $PKG_MANAGER (skipping)"
+    return 1
+  fi
+  for cand in $cands; do
+    echo "    -> trying package '$cand'..."
+    if pkg_install "$cand"; then
+      return 0
+    fi
+    warn "package '$cand' failed for '$key'"
+  done
+  return 1
 }
 
 pkg_install() {
@@ -387,6 +488,9 @@ pkg_install() {
     dnf)    sudo dnf install -y "$@";;
     pacman) sudo pacman -S --needed --noconfirm "$@";;
     zypper) sudo zypper --non-interactive install "$@";;
+    apk)    sudo apk add "$@";;
+    xbps)   sudo xbps-install -Sy "$@";;
+    eopkg)  sudo eopkg install -y "$@";;
     *)      return 1;;
   esac
 }
@@ -427,7 +531,7 @@ if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/folder-color-revival.py" ]; then
   echo "==> No local checkout found, cloning $REPO_URL ..."
   if ! command -v git >/dev/null 2>&1; then
     echo "==> Installing git first..."
-    pkg_install "$(pkg_name git)"
+    try_key git || warn "git could not be installed automatically."
   fi
   SCRIPT_DIR="$(mktemp -d)/Nautilus-Extensions"
   git clone --depth 1 "$REPO_URL" "$SCRIPT_DIR"
@@ -437,20 +541,18 @@ fi
 # ---------------------------------------------------------------------------
 # Resolve dependencies for the selected extensions
 # ---------------------------------------------------------------------------
-REQUIRED_PKGS=()
-OPTIONAL_PKGS=()
-declare -A PKG_SEEN=()
+REQUIRED_KEYS=()
+OPTIONAL_KEYS=()
+declare -A KEY_SEEN=()
 
 add_key() {
-  local key="$1" pkg
-  pkg="$(pkg_name "$key")"
-  if [ -z "$pkg" ]; then return 0; fi
-  if [ -n "${PKG_SEEN[$pkg]:-}" ]; then return 0; fi
-  PKG_SEEN[$pkg]=1
+  local key="$1"
+  if [ -n "${KEY_SEEN[$key]:-}" ]; then return 0; fi
+  KEY_SEEN[$key]=1
   if [ "$key" = "unrar" ]; then
-    OPTIONAL_PKGS+=("$pkg")
+    OPTIONAL_KEYS+=("$key")
   else
-    REQUIRED_PKGS+=("$pkg")
+    REQUIRED_KEYS+=("$key")
   fi
 }
 
@@ -463,22 +565,102 @@ for slug in "${SELECTED[@]}"; do
   done
 done
 
+MISSING_KEYS=()
 echo "==> Detected package manager: $PKG_MANAGER"
-echo "==> Installing dependencies for ${#SELECTED[@]} extension(s)..."
-if [ "${#REQUIRED_PKGS[@]}" -gt 0 ]; then
-  pkg_install "${REQUIRED_PKGS[@]}"
+if [ "$PKG_MANAGER" = "unknown" ]; then
+  warn "No known package manager found — skipping automatic dependency installation."
+  warn "Extensions will still be copied; the verification step will report what is missing."
+  MISSING_KEYS=("${REQUIRED_KEYS[@]}")
+else
+  echo "==> Installing dependencies for ${#SELECTED[@]} extension(s)..."
+  for key in "${REQUIRED_KEYS[@]}"; do
+    [ -z "$(pkg_candidates "$key")" ] && continue
+    if ! try_key "$key"; then
+      MISSING_KEYS+=("$key")
+    fi
+  done
 fi
 
 # unrar is optional (RPM Fusion nonfree on Fedora, not always available).
 # 7z already covers regular RAR extraction.
-if [ "${#OPTIONAL_PKGS[@]}" -gt 0 ] && [ "$NO_OPTIONAL" -eq 0 ]; then
-  for pkg in "${OPTIONAL_PKGS[@]}"; do
+if [ "${#OPTIONAL_KEYS[@]}" -gt 0 ] && [ "$NO_OPTIONAL" -eq 0 ]; then
+  for key in "${OPTIONAL_KEYS[@]}"; do
     if ! command -v unrar >/dev/null 2>&1; then
-      echo "==> Trying optional $pkg ..."
-      pkg_install "$pkg" || warn "$pkg unavailable — password-protected RAR will use 7z."
+      if [ "$PKG_MANAGER" = "unknown" ]; then
+        warn "unrar not found — install it manually for password-protected RARs."
+      else
+        echo "==> Trying optional unrar ..."
+        try_key "$key" || warn "unrar unavailable — password-protected RAR will use 7z."
+      fi
     fi
   done
 fi
+
+# ---------------------------------------------------------------------------
+# Verification: check what the extensions actually need — GI typelibs,
+# Python modules and helper binaries — and report it, whatever the distro.
+# Never aborts the install; the goal is an honest report, not a hard stop.
+# ---------------------------------------------------------------------------
+verify_environment() {
+  echo "==> Verifying the environment (python3 + GObject/GTK + modules)..."
+  python3 - <<'PYEOF'
+import sys
+
+try:
+    import gi
+    print("  [ ok ] python3 gobject-introspection (gi)")
+except Exception:
+    print("  [ MISSING ] gobject-introspection (install e.g. python3-gi / python3-gobject / py3-gobject3)")
+    print("              Nautilus extensions cannot load without it. Fix that first, then re-run.")
+    sys.exit(0)
+
+def gi_check(lib, ver, mod):
+    try:
+        gi.require_version(lib, ver)
+        getattr(__import__("gi.repository", fromlist=[mod]), mod)
+        print("  [ ok ] %s %s typelib" % (lib, ver))
+        return True
+    except Exception:
+        print("  [ MISSING ] %s %s typelib" % (lib, ver))
+        return False
+
+gi_check("Gtk", "4.0", "Gtk")
+gi_check("Adw", "1", "Adw")
+try:
+    gi.require_version("Nautilus", "4.0")
+    print("  [ ok ] Nautilus 4.0 typelib")
+except Exception:
+    try:
+        gi.require_version("Nautilus", "4.1")
+        print("  [ ok ] Nautilus 4.1 typelib")
+    except Exception:
+        print("  [ MISSING ] Nautilus 4.x typelib (install nautilus / gir1.2-nautilus-4.0 / nautilus-dev)")
+
+gi_check("PangoCairo", "1.0", "PangoCairo")
+gi_check("GdkPixbuf", "2.0", "GdkPixbuf")
+
+for mod, hint in [("PIL.Image", "pillow / python-pillow / py3-pillow"),
+                  ("cairo", "python3-cairo / python-cairo / py3-cairo"),
+                  ("mutagen", "python3-mutagen / python-mutagen / py3-mutagen"),
+                  ("pypdf", "pypdf / python3-pypdf / python-pypdf / py3-pypdf"),
+                  ("libarchive", "libarchive-c / python3-libarchive-c / python-libarchive-c / py3-libarchive-c")]:
+    try:
+        __import__(mod)
+        print("  [ ok ] python module %s" % mod)
+    except Exception:
+        print("  [ MISSING ] python module %s (%s)" % (mod, hint))
+PYEOF
+  command -v ffmpeg >/dev/null 2>&1       && echo "  [ ok ] ffmpeg"              || echo "  [ MISSING ] ffmpeg"
+  { command -v 7z >/dev/null 2>&1 || command -v 7za >/dev/null 2>&1 || command -v 7zr >/dev/null 2>&1 || command -v 7zz >/dev/null 2>&1; } \
+                                            && echo "  [ ok ] 7z (7-zip)"          || echo "  [ MISSING ] 7z (7zip / p7zip)"
+  command -v gs >/dev/null 2>&1           && echo "  [ ok ] ghostscript (gs)"   || echo "  [ MISSING ] ghostscript (gs)"
+  command -v rsync >/dev/null 2>&1        && echo "  [ ok ] rsync"              || echo "  [ MISSING ] rsync"
+  command -v rg >/dev/null 2>&1           && echo "  [ ok ] ripgrep (rg)"       || echo "  [ MISSING ] ripgrep (rg)"
+  command -v pdfinfo >/dev/null 2>&1      && echo "  [ ok ] poppler-utils"      || echo "  [ MISSING ] poppler-utils (pdfinfo)"
+  command -v git >/dev/null 2>&1          && echo "  [ ok ] git"                || echo "  [ MISSING ] git"
+}
+verify_environment
+
 
 # ---------------------------------------------------------------------------
 # Optional: remove-ai-watermarks CLI (used by the Image Tools submenu)
@@ -703,4 +885,9 @@ fi
 echo "==> Restarting Nautilus..."
 nautilus -q || true
 
+if [ "${#MISSING_KEYS[@]}" -gt 0 ]; then
+  echo "Dependency groups that could not be installed: ${MISSING_KEYS[*]}"
+  echo "(They may already be present — check the verification report above.)"
+  echo "Packages missing there: install the matching names shown in the report, then re-run."
+fi
 echo "Done! Installed ${#SELECTED[@]} extension(s). Open Nautilus and right-click, or use F3 F4 F7 F8 F9."
