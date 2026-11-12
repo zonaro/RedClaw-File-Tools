@@ -1,0 +1,1441 @@
+{
+  "schema_version": 1,
+  "product": "RedClaw File Tools",
+  "languages": [
+    "pt_BR",
+    "en",
+    "es",
+    "fr",
+    "de"
+  ],
+  "file_managers": [
+    {
+      "id": "nautilus",
+      "binary": "nautilus",
+      "name": "Nautilus"
+    },
+    {
+      "id": "dolphin",
+      "binary": "dolphin",
+      "name": "Dolphin"
+    },
+    {
+      "id": "nemo",
+      "binary": "nemo",
+      "name": "Nemo"
+    },
+    {
+      "id": "caja",
+      "binary": "caja",
+      "name": "Caja"
+    },
+    {
+      "id": "thunar",
+      "binary": "thunar",
+      "name": "Thunar"
+    },
+    {
+      "id": "pcmanfm-qt",
+      "binary": "pcmanfm-qt",
+      "name": "PCManFM-Qt"
+    }
+  ],
+  "extensions": [
+    {
+      "id": "archive-browser",
+      "name": "Archive Browser",
+      "category": "Archives",
+      "files": [
+        "archive-browser.py"
+      ],
+      "dependencies": [
+        "libarchive-c",
+        "p7zip",
+        "unrar"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "audio-tools",
+      "name": "Audio Tools",
+      "category": "Media",
+      "files": [
+        "audio-tools.py",
+        "media_dialogs.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "ffmpeg",
+        "mutagen"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "clone-repository",
+      "name": "Clone Repository",
+      "category": "Development",
+      "files": [
+        "clone-repository.py"
+      ],
+      "dependencies": [
+        "git"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "column-browser",
+      "name": "Column Browser",
+      "category": "Navigation",
+      "files": [
+        "column-browser.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "comic-tools",
+      "name": "Comic Tools",
+      "category": "Media",
+      "files": [
+        "comic-tools.py"
+      ],
+      "dependencies": [
+        "p7zip",
+        "unrar"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "compress-pdf",
+      "name": "Compress PDF",
+      "category": "PDF",
+      "files": [
+        "compress-pdf.py"
+      ],
+      "dependencies": [
+        "ghostscript",
+        "pypdf"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "cut-dim",
+      "name": "Cut Dim",
+      "category": "Appearance",
+      "files": [
+        "cut-dim.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "deb-installer",
+      "name": "DEB Installer",
+      "category": "System",
+      "files": [
+        "deb-installer.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "conditional",
+          "reason": "Only useful on Debian-based distributions."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "dev-tools-minify",
+      "name": "Dev Tools Minify",
+      "category": "Development",
+      "files": [
+        "dev-tools-minify.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "dual-panel",
+      "name": "Dual Panel",
+      "category": "Navigation",
+      "files": [
+        "dual-panel.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "rsync"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "duration-column",
+      "name": "Duration Column",
+      "category": "Metadata",
+      "files": [
+        "duration-column.py"
+      ],
+      "dependencies": [
+        "ffmpeg"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "edit-with",
+      "name": "Edit With",
+      "category": "Editing",
+      "files": [
+        "nautilus_edit_ext.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "extensions-manager",
+      "name": "Extensions Manager",
+      "category": "Management",
+      "files": [
+        "extensions-manager.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "redundant",
+          "reason": "The dedicated RedClaw manager replaces this management menu."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "extract-here",
+      "name": "Extract Here",
+      "category": "Archives",
+      "files": [
+        "extract-here.py"
+      ],
+      "dependencies": [
+        "p7zip",
+        "unrar"
+      ],
+      "portable_actions": [
+        {
+          "id": "extract",
+          "title": "Extract archives here",
+          "mimes": [
+            "archives"
+          ]
+        }
+      ],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "partial",
+          "recommendation": "redundant",
+          "reason": "Portable ZIP/TAR extraction only; built-in archive integration may already exist."
+        },
+        "nemo": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable ZIP/TAR extraction only; built-in archive integration may already exist."
+        },
+        "caja": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable ZIP/TAR extraction only; built-in archive integration may already exist."
+        },
+        "thunar": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable ZIP/TAR extraction only; built-in archive integration may already exist."
+        },
+        "pcmanfm-qt": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable ZIP/TAR extraction only; built-in archive integration may already exist."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "file-tools",
+      "name": "File Tools",
+      "category": "Files",
+      "files": [
+        "file-tools.py"
+      ],
+      "dependencies": [
+        "pillow"
+      ],
+      "portable_actions": [
+        {
+          "id": "sha256",
+          "title": "Create SHA-256 checksums",
+          "mimes": [
+            "all"
+          ]
+        },
+        {
+          "id": "copy-path",
+          "title": "Copy absolute paths",
+          "mimes": [
+            "all"
+          ]
+        }
+      ],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable checksum and copy-path actions only."
+        },
+        "nemo": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable checksum and copy-path actions only."
+        },
+        "caja": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable checksum and copy-path actions only."
+        },
+        "thunar": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable checksum and copy-path actions only."
+        },
+        "pcmanfm-qt": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable checksum and copy-path actions only."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "folder-color-revival",
+      "name": "Folder Color Revival",
+      "category": "Appearance",
+      "files": [
+        "folder-color-revival.py",
+        "folder_icon_editor.py",
+        "folder_icon_theme.py",
+        "folder_icon_project.py",
+        "folder_icon_catalog.py",
+        "name_to_color.py",
+        "color_database.json",
+        "assets/folder-icons"
+      ],
+      "dependencies": [
+        "pillow",
+        "cairo",
+        "pangocairo"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "hidden-dim-all",
+      "name": "Hidden Dim (all)",
+      "category": "Appearance",
+      "files": [
+        "hidden-dim-all.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": [
+        "hidden-dim-icon"
+      ]
+    },
+    {
+      "id": "hidden-dim-icon",
+      "name": "Hidden Dim (icon)",
+      "category": "Appearance",
+      "files": [
+        "hidden-dim-icon.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": [
+        "hidden-dim-all"
+      ]
+    },
+    {
+      "id": "move-and-symlink",
+      "name": "Move and Symlink",
+      "category": "Files",
+      "files": [
+        "move-and-symlink.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "image-tools",
+      "name": "Image Tools",
+      "category": "Images",
+      "files": [
+        "image-tools.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "pillow",
+        "ffmpeg"
+      ],
+      "portable_actions": [
+        {
+          "id": "to-png",
+          "title": "Convert image to PNG",
+          "mimes": [
+            "images"
+          ]
+        }
+      ],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable image conversion only, not the complete Nautilus UI."
+        },
+        "nemo": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable image conversion only, not the complete Nautilus UI."
+        },
+        "caja": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable image conversion only, not the complete Nautilus UI."
+        },
+        "thunar": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable image conversion only, not the complete Nautilus UI."
+        },
+        "pcmanfm-qt": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Portable image conversion only, not the complete Nautilus UI."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "media-converter",
+      "name": "Media Converter",
+      "category": "Media",
+      "files": [
+        "media-converter.py",
+        "media_dialogs.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "ffmpeg",
+        "pillow"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "merge-pdf",
+      "name": "Merge PDF",
+      "category": "PDF",
+      "files": [
+        "merge-pdf.py"
+      ],
+      "dependencies": [
+        "pypdf"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "paste-into-file",
+      "name": "Paste Into File",
+      "category": "Files",
+      "files": [
+        "paste-into-file.py"
+      ],
+      "dependencies": [
+        "pillow"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "preview-panel",
+      "name": "Preview Panel",
+      "category": "Navigation",
+      "files": [
+        "preview-panel.py"
+      ],
+      "dependencies": [
+        "pillow",
+        "cairo",
+        "ffmpeg",
+        "ffmpegthumbnailer",
+        "poppler"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "progress-mirror",
+      "name": "Progress Mirror",
+      "category": "System",
+      "files": [
+        "progress-mirror.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "search-content",
+      "name": "Search Content",
+      "category": "Development",
+      "files": [
+        "search-content.py"
+      ],
+      "dependencies": [
+        "ripgrep"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "terminal-tools",
+      "name": "Terminal Tools",
+      "category": "Development",
+      "files": [
+        "terminal-tools.py",
+        "follow-shell.py"
+      ],
+      "dependencies": [],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "video-to-audio",
+      "name": "Video to Audio",
+      "category": "Media",
+      "files": [
+        "video-to-audio.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "ffmpeg"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "video-tools",
+      "name": "Video Tools",
+      "category": "Media",
+      "files": [
+        "video-tools.py",
+        "media_dialogs.py",
+        "media_core"
+      ],
+      "dependencies": [
+        "ffmpeg"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    },
+    {
+      "id": "watermark-pdf",
+      "name": "Watermark PDF",
+      "category": "PDF",
+      "files": [
+        "watermark-pdf.py"
+      ],
+      "dependencies": [
+        "ghostscript",
+        "pypdf",
+        "cairo"
+      ],
+      "portable_actions": [],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "recommended",
+          "reason": "Full existing Nautilus extension."
+        },
+        "dolphin": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "nemo": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "caja": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "thunar": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        },
+        "pcmanfm-qt": {
+          "support": "unsupported",
+          "recommendation": "incompatible",
+          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
+        }
+      },
+      "conflicts": []
+    }
+  ]
+}
