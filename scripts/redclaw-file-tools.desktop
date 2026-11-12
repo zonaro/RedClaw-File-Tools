@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RedClaw File Tools
+Name[pt_BR]=RedClaw File Tools
+Comment=Manage extensions for multiple Linux file managers
+Comment[pt_BR]=Gerencie extensões de diversos gerenciadores de arquivos Linux
+Exec=redclaw_file_tools
+Icon=redclaw-file-tools
+Terminal=false
+Categories=Utility;FileManager;
+StartupNotify=true
