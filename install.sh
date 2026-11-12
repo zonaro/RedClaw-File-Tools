@@ -25,7 +25,6 @@
 #   ./install.sh --only dual-panel,edit-with  # install just these
 #   ./install.sh --exclude hidden-dim-all     # install all but these
 #   ./install.sh --all --yes --no-optional    # non-interactive, no extras
-#   ./install.sh --only image-tools --yes     # auto-accept the optional CLI
 #
 # Flags:
 #   --all            install every extension (default)
@@ -33,7 +32,7 @@
 #   --exclude LIST   comma-separated slugs to skip (installs the rest)
 #   --list           show available extensions and exit
 #   --yes, -y        assume "yes" for prompts (non-interactive)
-#   --no-optional    skip optional extras (unrar, remove-ai-watermarks CLI)
+#   --no-optional    skip optional extras (unrar)
 #   --help, -h       show this help and exit
 #
 set -euo pipefail
@@ -44,14 +43,6 @@ PPA_DIR="/usr/share/zonaro-nautilus-extensions"
 
 # Directory holding the media conversion core (needed by a few extensions).
 MEDIA_CORE_DIR="media_core"
-
-# Upscayl NCNN CLI backend (optional, for the AI image upscale entry).
-# Released as standalone per-platform zips; we only ever use the Linux zip and
-# extract just the `upscayl-bin` executable — never the Electron app.
-UPSCAYL_VERSION="20251207-174704"
-UPSCAYL_LINUX_ASSET="upscayl-bin-${UPSCAYL_VERSION}-linux.zip"
-UPSCAYL_SHA256="a9fab3c770b62f2b7a35d8d6d61eb4e8b3aef79128b665c919d080b85a2292f2"
-UPSCAYL_DOWNLOAD_URL="https://github.com/upscayl/upscayl-ncnn/releases/download/${UPSCAYL_VERSION}/${UPSCAYL_LINUX_ASSET}"
 
 # ---------------------------------------------------------------------------
 # Extension catalog
@@ -660,145 +651,6 @@ PYEOF
   command -v git >/dev/null 2>&1          && echo "  [ ok ] git"                || echo "  [ MISSING ] git"
 }
 verify_environment
-
-
-# ---------------------------------------------------------------------------
-# Optional: remove-ai-watermarks CLI (used by the Image Tools submenu)
-# Upstream: https://github.com/wiltodelta/remove-ai-watermarks
-# The Nautilus extension (image-tools.py) is always copied below; the CLI
-# itself is only installed if the user opts in here.
-# ---------------------------------------------------------------------------
-install_raiw_cli() {
-  if command -v remove-ai-watermarks >/dev/null 2>&1; then
-    echo "==> remove-ai-watermarks already on PATH ($(command -v remove-ai-watermarks)), skipping."
-    return 0
-  fi
-  echo "==> Installing remove-ai-watermarks CLI (extras: [all])..."
-  if command -v uv >/dev/null 2>&1; then
-    uv tool install "remove-ai-watermarks[all]" || uv tool install --force "remove-ai-watermarks[all]"
-  elif command -v pipx >/dev/null 2>&1; then
-    pipx install "remove-ai-watermarks[all]" || pipx reinstall "remove-ai-watermarks[all]"
-  else
-    echo "==> No uv/pipx found, trying to install uv first..."
-    pkg_install uv >/dev/null 2>&1 || true
-    if command -v uv >/dev/null 2>&1; then
-      uv tool install "remove-ai-watermarks[all]" || uv tool install --force "remove-ai-watermarks[all]"
-    else
-      echo "==> Falling back to pip --user (may need a pip package)..."
-      python3 -m pip install --user --break-system-packages "remove-ai-watermarks[all]" 2>/dev/null \
-        || python3 -m pip install --user "remove-ai-watermarks[all]"
-    fi
-  fi
-  if command -v remove-ai-watermarks >/dev/null 2>&1; then
-    echo "==> remove-ai-watermarks installed: $(command -v remove-ai-watermarks)"
-  elif [ -x "$HOME/.local/bin/remove-ai-watermarks" ]; then
-    echo "==> Installed at \$HOME/.local/bin/remove-ai-watermarks."
-    echo "    Add it to PATH if needed: export PATH=\"\$HOME/.local/bin:\$PATH\""
-  else
-    echo "WARNING: remove-ai-watermarks install seems to have failed."
-    echo "         Install manually: uv tool install \"remove-ai-watermarks[all]\""
-  fi
-}
-
-# Optional: upscayl-bin standalone CLI (AI image upscale backend).
-# Installs only the `upscayl-bin` executable from an official upscayl-ncnn
-# release, into a per-user XDG directory — no root, no Electron, no silent
-# downloads outside of this explicit opt-in step.
-install_upscayl_cli() {
-  if command -v upscayl-bin >/dev/null 2>&1; then
-    echo "==> upscayl-bin already on PATH ($(command -v upscayl-bin)), skipping."
-    return 0
-  fi
-  if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-    echo "WARNING: curl/unzip required to install upscayl-bin; skipping."
-    return 1
-  fi
-  local install_root="${XDG_DATA_HOME:-$HOME/.local/share}/nautilus-extensions/upscayl"
-  local bin_dir="$install_root/bin"
-  mkdir -p "$bin_dir"
-  local tmp_zip; tmp_zip="$(mktemp)"
-  echo "==> Baixando upscayl-bin ${UPSCAYL_VERSION} (backend autônomo, sem Electron)..."
-  if ! curl -fsSL "$UPSCAYL_DOWNLOAD_URL" -o "$tmp_zip"; then
-    echo "WARNING: Falha ao baixar upscayl-bin. Instale manualmente em:"
-    echo "         $UPSCAYL_DOWNLOAD_URL"
-    rm -f "$tmp_zip"
-    return 1
-  fi
-  echo "${UPSCAYL_SHA256}  $tmp_zip" | sha256sum -c - >/dev/null 2>&1 || {
-    echo "WARNING: SHA-256 do upscayl-bin não confere; instalação abortada."
-    rm -f "$tmp_zip"
-    return 1
-  }
-  local tmp_dir; tmp_dir="$(mktemp -d)"
-  unzip -o "$tmp_zip" -d "$tmp_dir" >/dev/null 2>&1 || true
-  local found=""
-  for cand in "$tmp_dir"/upscayl-bin "$tmp_dir"/upscayl; do
-    if [ -x "$cand" ]; then found="$cand"; break; fi
-  done
-  if [ -z "$found" ]; then
-    echo "WARNING: Binário upscayl-bin não encontrado no release zip."
-    rm -rf "$tmp_dir" "$tmp_zip"
-    return 1
-  fi
-  cp "$found" "$bin_dir/upscayl-bin"
-  chmod +x "$bin_dir/upscayl-bin"
-  echo "==> upscayl-bin instalado em $bin_dir/upscayl-bin"
-  echo "    Adicione ao PATH se necessário: export PATH=\"$bin_dir:\$PATH\""
-  rm -rf "$tmp_dir" "$tmp_zip"
-}
-
-selected_has() {
-  local s
-  for s in "${SELECTED[@]}"; do
-    if [ "$s" = "$1" ]; then return 0; fi
-  done
-  return 1
-}
-
-if selected_has image-tools; then
-  if [ "$NO_OPTIONAL" -eq 1 ]; then
-    echo "==> Skipping remove-ai-watermarks CLI (--no-optional)."
-  elif [ "$ASSUME_YES" -eq 1 ]; then
-    install_raiw_cli
-  elif [ -e /dev/tty ]; then
-    # Ask on the controlling terminal so curl|bash still prompts correctly.
-    printf "Instalar o CLI remove-ai-watermarks (usado pelo submenu Image Tools)? [S/n] " > /dev/tty
-    read -r RAIW_ANSWER < /dev/tty || RAIW_ANSWER=""
-    case "${RAIW_ANSWER:-Y}" in
-      [nN]*) echo "==> Skipping remove-ai-watermarks CLI (extension file will still be copied).";;
-      *)     install_raiw_cli;;
-    esac
-  else
-    case "${RAIW_INSTALL:-Y}" in
-      [nN]*) echo "==> Skipping remove-ai-watermarks CLI (extension file will still be copied).";;
-      *)     install_raiw_cli;;
-    esac
-  fi
-else
-  echo "==> Image Tools not selected, skipping remove-ai-watermarks CLI."
-fi
-
-if selected_has image-tools; then
-  if [ "$NO_OPTIONAL" -eq 1 ]; then
-    echo "==> Skipping upscayl-bin CLI (--no-optional)."
-  elif [ "$ASSUME_YES" -eq 1 ]; then
-    install_upscayl_cli
-  elif [ -e /dev/tty ]; then
-    printf "Instalar o CLI upscayl-bin (backend para o Upscale de IA)? [S/n] " > /dev/tty
-    read -r UPSCAYL_ANSWER < /dev/tty || UPSCAYL_ANSWER=""
-    case "${UPSCAYL_ANSWER:-Y}" in
-      [nN]*) echo "==> Skipping upscayl-bin CLI (Upscale menu ainda será exibido com aviso).";;
-      *)     install_upscayl_cli;;
-    esac
-  else
-    case "${UPSCAYL_INSTALL:-Y}" in
-      [nN]*) echo "==> Skipping upscayl-bin CLI (Upscale menu ainda será exibido com aviso).";;
-      *)     install_upscayl_cli;;
-    esac
-  fi
-else
-  echo "==> Image Tools not selected, skipping upscayl-bin CLI."
-fi
 
 # ---------------------------------------------------------------------------
 # Install the selected extensions

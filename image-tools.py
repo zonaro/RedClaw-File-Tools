@@ -23,29 +23,20 @@
 # DESC: Pillow-based image processing tools in an "Image Tools" submenu
 #       (grayscale, invert, crop, circle, resize, combine, watermark, optimize,
 #       colorize) plus a nested "Convert image" submenu
-#       (PNG/JPEG/WebP/ICO/256px square), an "Annotate" single-image editor
-#       (rect/ellipse/arrow/text with Ctrl+Z / Ctrl+Y undo-redo) and a
-#       "Remove AI watermarks" submenu bridging every
-#       `remove-ai-watermarks` CLI function for images, videos and folders.
+#       (PNG/JPEG/WebP/ICO/256px square) and an "Annotate" single-image editor
+#       (rect/ellipse/arrow/text with Ctrl+Z / Ctrl+Y undo-redo).
 # REQUIRES: python3-nautilus (>= 4.0), python3-pil, python3-gi, gir1.2-adw-1,
 #           python3-cairo (annotate tool),
-#           `remove-ai-watermarks` CLI on PATH (AI watermark entries only),
-#           ffmpeg (video entries only).
+#           ffmpeg (Convert image entries only).
 # INSTALL:
 #   cp image-tools.py ~/.local/share/nautilus-python/extensions/
 #   rm -rf ~/.local/share/nautilus-python/extensions/__pycache__
 #   nautilus -q
-#
-# UPSTREAM (AI watermark removal): https://github.com/wiltodelta/remove-ai-watermarks
 
 import os
 import io
 import locale
 import math
-import shlex
-import shutil
-import signal
-import subprocess
 import threading
 
 import cairo
@@ -73,14 +64,6 @@ except Exception:
     MediaItem = None
     MediaCategory = None
     Path = None
-
-# AI upscale helper (Upscayl NCNN backend). Lives next to this file so
-# nautilus-python can import it; defensive import keeps the extension working
-# even if image_ai_upscale.py is missing from the install.
-try:
-    from image_ai_upscale import run_upscale_for
-except ImportError:  # pragma: no cover - installed alongside image-tools.py
-    run_upscale_for = None
 
 # ---------------------------------------------------------------------------
 # i18n
@@ -177,70 +160,6 @@ if _lang.startswith("fr"):
         "s_resize":     "-redimensionné",
         "s_watermark":  "-filigrané",
         "s_colorize":   "-colorisé",
-        # --- Remove AI watermarks (CLI bridge) ---
-        "top_menu":        "Supprimer les filigranes IA",
-        "top_tip":         "Supprimer les filigranes IA (visible, invisible, métadonnées)",
-        "identify":        "Identifier…",
-        "classify":        "Classifier la photo…",
-        "visible":         "Supprimer marque visible…",
-        "erase":           "Effacer une région…",
-        "metadata":        "Métadonnées IA…",
-        "invisible":       "Suppression invisible (diffusion)…",
-        "all":             "Pipeline complet…",
-        "batch":           "Traiter un dossier (batch)…",
-        "v_identify":      "Vidéo : identifier…",
-        "v_all":           "Vidéo : nettoyage complet…",
-        "v_visible":       "Vidéo : marque visible…",
-        "v_metadata":      "Vidéo : métadonnées…",
-        "v_invisible":     "Vidéo : SynthID (régénération)…",
-        "v_batch":         "Vidéo : dossier (batch)…",
-        "run":             "Exécuter",
-        "close":           "Fermer",
-        "browse":          "Choisir…",
-        "output":          "Fichier de sortie",
-        "output_dir":      "Dossier de sortie",
-        "input_dir":       "Dossier d'entrée",
-        "options":         "Options",
-        "command":         "Commande",
-        "processing_run":  "Traitement en cours…",
-        "done":            "Terminé avec succès.",
-        "failed":          "Échec (code {code}).",
-        "cancelled":       "Annulé.",
-        "json":            "Sortie JSON",
-        "no_visible":      "Métadonnées uniquement (sans détecteurs pixel)",
-        "mark":            "Marque",
-        "backend":         "Moteur de remplissage",
-        "sensitivity":     "Sensibilité stricte",
-        "no_detect":       "Forcer sans détection (--no-detect)",
-        "keep_metadata":   "Garder les métadonnées",
-        "region":          "Région(s) x,y,l,h (séparées par ;)",
-        "region_hint":     "Ex. 1640,1930,400,100 ; 20,20,180,60",
-        "dilate":          "Dilatation du masque (px)",
-        "inpaint":         "Méthode cv2",
-        "op_check":        "Inspecter (--check)",
-        "op_remove":       "Supprimer (--remove)",
-        "remove_all":      "Tout supprimer (--remove-all)",
-        "force":           "Forcer (--force)",
-        "vendor":          "Cohorte (vendor)",
-        "pipeline":        "Pipeline",
-        "strength":        "Force (0=auto)",
-        "seed":            "Seed",
-        "cpu_offload":     "CPU offload (moins de VRAM)",
-        "max_res":         "Résolution max (0=natif)",
-        "tile":            "Tuiles (--tile, grandes images)",
-        "mode":            "Mode",
-        "with_invisible":  "Inclure régénération invisible",
-        "noise_std":       "Bruit (noise-std)",
-        "long_side":       "Grand côté (px)",
-        "fps":             "FPS (0=source)",
-        "batch_size":      "Taille de lot",
-        "temporal":        "Cohérence temporelle",
-        "no_temporal":     "Désactiver la cohérence temporelle",
-        "suffix_note":     "Sans -o, les images écrasent la source ; les vidéos écrivent <source>_clean.",
-        "err_no_bin":      "L'outil `remove-ai-watermarks` est introuvable dans le PATH.",
-        "err_no_bin_hint": "Installez-le avec :\nuv tool install \"remove-ai-watermarks[all]\"\npuis relancez Nautilus (nautilus -q).",
-        "err_no_compat":   "Aucun fichier compatible sélectionné.",
-        "files":           "Fichier(s)",
         # --- Convert image (format conversion) ---
         "convert_menu":    "Convertir l'image",
         "convert_to":      "Convertir en",
@@ -256,11 +175,6 @@ if _lang.startswith("fr"):
         "cv_done_failed":  "{count} image(s) convertie(s), {failed} échec(s).",
         "cv_nothing":      "Aucune conversion nécessaire — {count} fichier(s) déjà au format cible.",
         "done_skip":       "{skipped} fichier(s) ignoré(s) (déjà au format cible).",
-        # --- AI upscale (Upscayl NCNN backend) ---
-        "ai_top_menu":     "Outils IA",
-        "ai_top_tip":      "Outils d'image basés sur l'IA (backend Upscayl NCNN)",
-        "ai_upscale":      "Upscaler…",
-        "ai_upscale_tip":  "Upscaler des images par IA (backend Upscayl)",
     }
 elif _lang.startswith("de"):
     T = {
@@ -346,70 +260,6 @@ elif _lang.startswith("de"):
         "s_resize":     "-skaliert",
         "s_watermark":  "-wasserzeichen",
         "s_colorize":   "-coloriert",
-        # --- Remove AI watermarks (CLI bridge) ---
-        "top_menu":        "KI-Wasserzeichen entfernen",
-        "top_tip":         "KI-Wasserzeichen entfernen (sichtbar, unsichtbar, Metadaten)",
-        "identify":        "Identifizieren…",
-        "classify":        "Foto klassifizieren…",
-        "visible":         "Sichtbare Marke entfernen…",
-        "erase":           "Bereich löschen…",
-        "metadata":        "KI-Metadaten…",
-        "invisible":       "Unsichtbar entfernen (Diffusion)…",
-        "all":             "Komplette Pipeline…",
-        "batch":           "Ordner verarbeiten (Batch)…",
-        "v_identify":      "Video: identifizieren…",
-        "v_all":           "Video: komplett reinigen…",
-        "v_visible":       "Video: sichtbare Marke…",
-        "v_metadata":      "Video: Metadaten…",
-        "v_invisible":     "Video: SynthID (Regenerierung)…",
-        "v_batch":         "Video: Ordner (Batch)…",
-        "run":             "Ausführen",
-        "close":           "Schließen",
-        "browse":          "Wählen…",
-        "output":          "Ausgabedatei",
-        "output_dir":      "Ausgabeordner",
-        "input_dir":       "Eingabeordner",
-        "options":         "Optionen",
-        "command":         "Befehl",
-        "processing_run":  "Verarbeitung läuft…",
-        "done":            "Erfolgreich abgeschlossen.",
-        "failed":          "Fehlgeschlagen (Code {code}).",
-        "cancelled":       "Abgebrochen.",
-        "json":            "JSON-Ausgabe",
-        "no_visible":      "Nur Metadaten (keine Pixel-Detektoren)",
-        "mark":            "Marke",
-        "backend":         "Füll-Backend",
-        "sensitivity":     "Strikte Sensitivität",
-        "no_detect":       "Ohne Erkennung erzwingen (--no-detect)",
-        "keep_metadata":   "Metadaten behalten",
-        "region":          "Region(en) x,y,b,h (mit ; trennen)",
-        "region_hint":     "Z. B. 1640,1930,400,100 ; 20,20,180,60",
-        "dilate":          "Masken-Erweiterung (px)",
-        "inpaint":         "cv2-Methode",
-        "op_check":        "Prüfen (--check)",
-        "op_remove":       "Entfernen (--remove)",
-        "remove_all":      "Alles entfernen (--remove-all)",
-        "force":           "Erzwingen (--force)",
-        "vendor":          "Kohorte (vendor)",
-        "pipeline":        "Pipeline",
-        "strength":        "Stärke (0=auto)",
-        "seed":            "Seed",
-        "cpu_offload":     "CPU-Offload (weniger VRAM)",
-        "max_res":         "Max. Auflösung (0=nativ)",
-        "tile":            "Kacheln (--tile, große Bilder)",
-        "mode":            "Modus",
-        "with_invisible":  "Unsichtbare Regenerierung einschließen",
-        "noise_std":       "Rauschen (noise-std)",
-        "long_side":       "Lange Seite (px)",
-        "fps":             "FPS (0=Quelle)",
-        "batch_size":      "Batch-Größe",
-        "temporal":        "Zeitliche Konsistenz",
-        "no_temporal":     "Zeitliche Konsistenz deaktivieren",
-        "suffix_note":     "Ohne -o überschreiben Bilder die Quelle; Videos schreiben <source>_clean.",
-        "err_no_bin":      "`remove-ai-watermarks` wurde im PATH nicht gefunden.",
-        "err_no_bin_hint": "Installieren mit:\nuv tool install \"remove-ai-watermarks[all]\"\nDanach Nautilus neu starten (nautilus -q).",
-        "err_no_compat":   "Keine kompatible Datei ausgewählt.",
-        "files":           "Datei(en)",
         # --- Convert image (format conversion) ---
         "convert_menu":    "Bild konvertieren",
         "convert_to":      "Konvertieren nach",
@@ -425,11 +275,6 @@ elif _lang.startswith("de"):
         "cv_done_failed":  "{count} Bild(er) konvertiert, {failed} fehlgeschlagen.",
         "cv_nothing":      "Keine Konvertierung nötig — {count} Datei(en) bereits im Zielformat.",
         "done_skip":       "{skipped} Datei(en) übersprungen (bereits im Zielformat).",
-        # --- AI upscale (Upscayl NCNN backend) ---
-        "ai_top_menu":     "KI-Tools",
-        "ai_top_tip":      "KI-gestützte Bildwerkzeuge (Upscayl NCNN Backend)",
-        "ai_upscale":      "Hochskalieren…",
-        "ai_upscale_tip":  "Bilder per KI hochskalieren (Upscayl-Backend)",
     }
 elif _lang.startswith("es"):
     T = {
@@ -515,70 +360,6 @@ elif _lang.startswith("es"):
         "s_resize":     "-redimensionada",
         "s_watermark":  "-marca-agua",
         "s_colorize":   "-coloreada",
-        # --- Remove AI watermarks (CLI bridge) ---
-        "top_menu":        "Eliminar marcas de agua de IA",
-        "top_tip":         "Eliminar marcas de agua IA (visibles, invisibles, metadatos)",
-        "identify":        "Identificar…",
-        "classify":        "Clasificar foto…",
-        "visible":         "Quitar marca visible…",
-        "erase":           "Borrar región…",
-        "metadata":        "Metadatos IA…",
-        "invisible":       "Eliminación invisible (difusión)…",
-        "all":             "Pipeline completo…",
-        "batch":           "Procesar carpeta (batch)…",
-        "v_identify":      "Vídeo: identificar…",
-        "v_all":           "Vídeo: limpieza completa…",
-        "v_visible":       "Vídeo: marca visible…",
-        "v_metadata":      "Vídeo: metadatos…",
-        "v_invisible":     "Vídeo: SynthID (regeneración)…",
-        "v_batch":         "Vídeo: carpeta (batch)…",
-        "run":             "Ejecutar",
-        "close":           "Cerrar",
-        "browse":          "Elegir…",
-        "output":          "Archivo de salida",
-        "output_dir":      "Carpeta de salida",
-        "input_dir":       "Carpeta de entrada",
-        "options":         "Opciones",
-        "command":         "Comando",
-        "processing_run":  "Procesando…",
-        "done":            "Completado con éxito.",
-        "failed":          "Falló (código {code}).",
-        "cancelled":       "Cancelado.",
-        "json":            "Salida JSON",
-        "no_visible":      "Solo metadatos (sin detectores de píxeles)",
-        "mark":            "Marca",
-        "backend":         "Motor de relleno",
-        "sensitivity":     "Sensibilidad estricta",
-        "no_detect":       "Forzar sin detección (--no-detect)",
-        "keep_metadata":   "Conservar metadatos",
-        "region":          "Región(es) x,y,an,al (separadas por ;)",
-        "region_hint":     "Ej. 1640,1930,400,100 ; 20,20,180,60",
-        "dilate":          "Dilatar máscara (px)",
-        "inpaint":         "Método cv2",
-        "op_check":        "Inspeccionar (--check)",
-        "op_remove":       "Eliminar (--remove)",
-        "remove_all":      "Eliminar todo (--remove-all)",
-        "force":           "Forzar (--force)",
-        "vendor":          "Cohorte (vendor)",
-        "pipeline":        "Pipeline",
-        "strength":        "Fuerza (0=auto)",
-        "seed":            "Seed",
-        "cpu_offload":     "CPU offload (menos VRAM)",
-        "max_res":         "Resolución máx. (0=nativa)",
-        "tile":            "Mosaicos (--tile, imágenes grandes)",
-        "mode":            "Modo",
-        "with_invisible":  "Incluir regeneración invisible",
-        "noise_std":       "Ruido (noise-std)",
-        "long_side":       "Lado mayor (px)",
-        "fps":             "FPS (0=origen)",
-        "batch_size":      "Tamaño de lote",
-        "temporal":        "Consistencia temporal",
-        "no_temporal":     "Desactivar consistencia temporal",
-        "suffix_note":     "Sin -o, las imágenes sobrescriben el origen; los vídeos escriben <source>_clean.",
-        "err_no_bin":      "No se encontró `remove-ai-watermarks` en el PATH.",
-        "err_no_bin_hint": "Instálelo con:\nuv tool install \"remove-ai-watermarks[all]\"\nluego reinicie Nautilus (nautilus -q).",
-        "err_no_compat":   "Ningún archivo compatible seleccionado.",
-        "files":           "Archivo(s)",
         # --- Convert image (format conversion) ---
         "convert_menu":    "Convertir imagen",
         "convert_to":      "Convertir a",
@@ -594,11 +375,6 @@ elif _lang.startswith("es"):
         "cv_done_failed":  "{count} imagen(es) convertida(s), {failed} fallo(s).",
         "cv_nothing":      "No hace falta conversión — {count} archivo(s) ya tienen el formato destino.",
         "done_skip":       "{skipped} archivo(s) omitido(s) (ya en el formato destino).",
-        # --- AI upscale (Upscayl NCNN backend) ---
-        "ai_top_menu":     "Herramientas IA",
-        "ai_top_tip":      "Herramientas de imagen con IA (backend Upscayl NCNN)",
-        "ai_upscale":      "Superescalar…",
-        "ai_upscale_tip":  "Superescalar imágenes con IA (backend Upscayl)",
     }
 elif _lang.startswith("pt"):
     T = {
@@ -684,70 +460,6 @@ elif _lang.startswith("pt"):
         "s_resize":     "-redimensionada",
         "s_watermark":  "-marca-dagua",
         "s_colorize":   "-colorida",
-        # --- Remove AI watermarks (CLI bridge) ---
-        "top_menu":        "Remover marcas d'água de IA",
-        "top_tip":         "Remover marcas d'água de IA (visível, invisível, metadados)",
-        "identify":        "Identificar…",
-        "classify":        "Classificar foto…",
-        "visible":         "Remover marca visível…",
-        "erase":           "Apagar região…",
-        "metadata":        "Metadados IA…",
-        "invisible":       "Remoção invisível (difusão)…",
-        "all":             "Pipeline completo…",
-        "batch":           "Processar pasta (batch)…",
-        "v_identify":      "Vídeo: identificar…",
-        "v_all":           "Vídeo: limpeza completa…",
-        "v_visible":       "Vídeo: marca visível…",
-        "v_metadata":      "Vídeo: metadados…",
-        "v_invisible":     "Vídeo: SynthID (regeneração)…",
-        "v_batch":         "Vídeo: pasta (batch)…",
-        "run":             "Executar",
-        "close":           "Fechar",
-        "browse":          "Escolher…",
-        "output":          "Arquivo de saída",
-        "output_dir":      "Pasta de saída",
-        "input_dir":       "Pasta de entrada",
-        "options":         "Opções",
-        "command":         "Comando",
-        "processing_run":  "Processando…",
-        "done":            "Concluído com sucesso.",
-        "failed":          "Falhou (código {code}).",
-        "cancelled":       "Cancelado.",
-        "json":            "Saída JSON",
-        "no_visible":      "Só metadados (sem detectores de pixel)",
-        "mark":            "Marca",
-        "backend":         "Motor de preenchimento",
-        "sensitivity":     "Sensibilidade estrita",
-        "no_detect":       "Forçar sem detecção (--no-detect)",
-        "keep_metadata":   "Manter metadados",
-        "region":          "Região(ões) x,y,l,a (separadas por ;)",
-        "region_hint":     "Ex. 1640,1930,400,100 ; 20,20,180,60",
-        "dilate":          "Dilatar máscara (px)",
-        "inpaint":         "Método cv2",
-        "op_check":        "Inspecionar (--check)",
-        "op_remove":       "Remover (--remove)",
-        "remove_all":      "Remover tudo (--remove-all)",
-        "force":           "Forçar (--force)",
-        "vendor":          "Coorte (vendor)",
-        "pipeline":        "Pipeline",
-        "strength":        "Força (0=auto)",
-        "seed":            "Seed",
-        "cpu_offload":     "CPU offload (menos VRAM)",
-        "max_res":         "Resolução máx. (0=nativa)",
-        "tile":            "Ladrilhos (--tile, imagens grandes)",
-        "mode":            "Modo",
-        "with_invisible":  "Incluir regeneração invisível",
-        "noise_std":       "Ruído (noise-std)",
-        "long_side":       "Lado maior (px)",
-        "fps":             "FPS (0=origem)",
-        "batch_size":      "Tamanho do lote",
-        "temporal":        "Consistência temporal",
-        "no_temporal":     "Desativar consistência temporal",
-        "suffix_note":     "Sem -o, imagens sobrescrevem a origem; vídeos gravam <source>_clean.",
-        "err_no_bin":      "`remove-ai-watermarks` não encontrado no PATH.",
-        "err_no_bin_hint": "Instale com:\nuv tool install \"remove-ai-watermarks[all]\"\ndepois reinicie o Nautilus (nautilus -q).",
-        "err_no_compat":   "Nenhum arquivo compatível selecionado.",
-        "files":           "Arquivo(s)",
         # --- Convert image (format conversion) ---
         "convert_menu":    "Converter imagem",
         "convert_to":      "Converter para",
@@ -763,11 +475,6 @@ elif _lang.startswith("pt"):
         "cv_done_failed":  "{count} imagem(ns) convertida(s), {failed} falha(s).",
         "cv_nothing":      "Nenhuma conversão necessária — {count} arquivo(s) já estão no formato de destino.",
         "done_skip":       "{skipped} arquivo(s) ignorado(s) (já no formato de destino).",
-        # --- AI upscale (Upscayl NCNN backend) ---
-        "ai_top_menu":     "Ferramentas de IA",
-        "ai_top_tip":      "Ferramentas de imagem com IA (backend Upscayl NCNN)",
-        "ai_upscale":      "Upscale…",
-        "ai_upscale_tip":  "Upscale de imagens por IA (backend Upscayl)",
     }
 else:
     T = {
@@ -853,70 +560,6 @@ else:
         "s_resize":     "-resized",
         "s_watermark":  "-watermarked",
         "s_colorize":   "-colorized",
-        # --- Remove AI watermarks (CLI bridge) ---
-        "top_menu":        "Remove AI Watermarks",
-        "top_tip":         "Remove AI watermarks (visible, invisible, metadata)",
-        "identify":        "Identify…",
-        "classify":        "Classify photo…",
-        "visible":         "Remove visible mark…",
-        "erase":           "Erase region…",
-        "metadata":        "AI metadata…",
-        "invisible":       "Invisible removal (diffusion)…",
-        "all":             "Full pipeline…",
-        "batch":           "Process folder (batch)…",
-        "v_identify":      "Video: identify…",
-        "v_all":           "Video: full clean…",
-        "v_visible":       "Video: visible mark…",
-        "v_metadata":      "Video: metadata…",
-        "v_invisible":     "Video: SynthID (regen)…",
-        "v_batch":         "Video: folder (batch)…",
-        "run":             "Run",
-        "close":           "Close",
-        "browse":          "Browse…",
-        "output":          "Output file",
-        "output_dir":      "Output folder",
-        "input_dir":       "Input folder",
-        "options":         "Options",
-        "command":         "Command",
-        "processing_run":  "Processing…",
-        "done":            "Completed successfully.",
-        "failed":          "Failed (exit code {code}).",
-        "cancelled":       "Cancelled.",
-        "json":            "JSON output",
-        "no_visible":      "Metadata only (no pixel detectors)",
-        "mark":            "Mark",
-        "backend":         "Fill backend",
-        "sensitivity":     "Strict sensitivity",
-        "no_detect":       "Force without detection (--no-detect)",
-        "keep_metadata":   "Keep metadata",
-        "region":          "Region(s) x,y,w,h (separated by ;)",
-        "region_hint":     "E.g. 1640,1930,400,100 ; 20,20,180,60",
-        "dilate":          "Mask dilate (px)",
-        "inpaint":         "cv2 method",
-        "op_check":        "Inspect (--check)",
-        "op_remove":       "Remove (--remove)",
-        "remove_all":      "Remove all (--remove-all)",
-        "force":           "Force (--force)",
-        "vendor":          "Cohort (vendor)",
-        "pipeline":        "Pipeline",
-        "strength":        "Strength (0=auto)",
-        "seed":            "Seed",
-        "cpu_offload":     "CPU offload (less VRAM)",
-        "max_res":         "Max resolution (0=native)",
-        "tile":            "Tiles (--tile, large images)",
-        "mode":            "Mode",
-        "with_invisible":  "Include invisible regeneration",
-        "noise_std":       "Noise (noise-std)",
-        "long_side":       "Long side (px)",
-        "fps":             "FPS (0=source)",
-        "batch_size":      "Batch size",
-        "temporal":        "Temporal consistency",
-        "no_temporal":     "Disable temporal consistency",
-        "suffix_note":     "Without -o, images overwrite source; videos write <source>_clean.",
-        "err_no_bin":      "`remove-ai-watermarks` was not found on PATH.",
-        "err_no_bin_hint": "Install it with:\nuv tool install \"remove-ai-watermarks[all]\"\nthen restart Nautilus (nautilus -q).",
-        "err_no_compat":   "No compatible file selected.",
-        "files":           "File(s)",
         # --- Convert image (format conversion) ---
         "convert_menu":    "Convert Image",
         "convert_to":      "Convert to",
@@ -932,11 +575,6 @@ else:
         "cv_done_failed":  "{count} image(s) converted, {failed} failed.",
         "cv_nothing":      "No conversion needed — {count} file(s) already have the target format.",
         "done_skip":       "{skipped} file(s) skipped (already in the target format).",
-        # --- AI upscale (Upscayl NCNN backend) ---
-        "ai_top_menu":     "AI Tools",
-        "ai_top_tip":      "AI-powered image tools (Upscayl NCNN backend)",
-        "ai_upscale":      "Upscale…",
-        "ai_upscale_tip":  "Upscale images with AI (Upscayl backend)",
     }
 
 # ---------------------------------------------------------------------------
@@ -1538,7 +1176,7 @@ class _BaseDialog(Adw.Window):
         # Defer mapping to one idle turn: presenting synchronously from a
         # menu-activate handler leaves pointer events stuck on the dying
         # Nautilus context menu on Wayland, so the popup appears but its
-        # buttons do not respond (same fix as remove-ai-watermarks.py).
+        # buttons do not respond.
         GLib.idle_add(super().present)
 
     def _section(self, text):
@@ -1898,792 +1536,6 @@ class ColorizeDialog(_BaseDialog):
 
 
 # ---------------------------------------------------------------------------
-# Remove AI watermarks: constants + helpers
-# ---------------------------------------------------------------------------
-
-RAIW_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif",
-                   ".gif", ".avif", ".heic", ".heif", ".jxl"}
-RAIW_VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi", ".flv"}
-
-# Mark names and enum values accepted by the `remove-ai-watermarks` CLI.
-RAIW_IMAGE_MARKS = ["auto", "gemini", "doubao", "jimeng", "qwen", "kling",
-                    "yuanbao", "baidu", "liblib", "runninghub",
-                    "microsoft-badge", "samsung", "generic-ai", "openart"]
-RAIW_VIDEO_MARKS = ["auto", "sora", "veo", "seedance", "doubao", "dola",
-                    "hailuo", "kling"]
-RAIW_BACKENDS = ["auto", "cv2", "migan", "lama"]
-RAIW_INPAINT_METHODS = ["telea", "ns"]
-RAIW_PIPELINES = ["qwen-zimage", "sdxl-zimage", "chroma-zimage", "auto"]
-RAIW_VENDORS = ["auto", "openai", "google", "microsoft", "meta", "bytedance"]
-RAIW_BATCH_MODES = ["visible", "invisible", "metadata", "all"]
-RAIW_VIDEO_BATCH_MODES = ["visible", "metadata", "all"]
-
-
-def _ext(path: str) -> str:
-    return os.path.splitext(path)[1].lower()
-
-
-def _is_raiw_image(path: str) -> bool:
-    return _ext(path) in RAIW_IMAGE_EXTS
-
-
-def _is_raiw_video(path: str) -> bool:
-    return _ext(path) in RAIW_VIDEO_EXTS
-
-
-def _check_bin() -> bool:
-    if not shutil.which("remove-ai-watermarks"):
-        _show_message(f"{T['err_no_bin']}\n\n{T['err_no_bin_hint']}")
-        return False
-    return True
-
-
-def _raiw_output(path: str) -> str:
-    base, ext = os.path.splitext(path)
-    return f"{base}_clean{ext}"
-
-
-def _parse_regions(text: str) -> list:
-    """'x,y,w,h ; x,y,w,h' -> ['x,y,w,h', ...], raising ValueError on bad input."""
-    regs = []
-    for chunk in (text or "").split(";"):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        parts = [p.strip() for p in chunk.split(",")]
-        if len(parts) != 4:
-            raise ValueError(chunk)
-        nums = [int(p) for p in parts]  # may raise
-        if nums[2] <= 0 or nums[3] <= 0:
-            raise ValueError(chunk)
-        regs.append(f"{nums[0]},{nums[1]},{nums[2]},{nums[3]}")
-    return regs
-
-
-def _short_list(paths: list, limit: int = 3) -> str:
-    names = [os.path.basename(p) for p in paths[:limit]]
-    s = ", ".join(names)
-    if len(paths) > limit:
-        s += f" (+{len(paths) - limit})"
-    return s
-
-
-# nautilus-python drops its Python reference as soon as .present() returns, and
-# a GC'd dialog stops responding to button/X clicks (dead popup for the user).
-_raiw_windows: list = []
-
-
-def _raiw_forget(win: Gtk.Window):
-    if win in _raiw_windows:
-        _raiw_windows.remove(win)
-
-
-def _raiw_header(title: str) -> Adw.HeaderBar:
-    """HeaderBar with a guaranteed working close button.
-
-    A bare Adw.HeaderBar() relies on the system button-layout setting;
-    on some desktops that leaves the dialog with no visible/working X.
-    """
-    header = Adw.HeaderBar()
-    header.set_decoration_layout(":minimize,close")
-    header.set_title_widget(Gtk.Label(label=title))
-    return header
-
-
-def _raiw_add_escape(win: Gtk.Window):
-    ctrl = Gtk.ShortcutController()
-    ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
-    trigger = Gtk.ShortcutTrigger.parse_string("Escape")
-    action = Gtk.CallbackAction.new(lambda *a: (win.close(), True)[1])
-    ctrl.add_shortcut(Gtk.Shortcut.new(trigger, action))
-    win.add_controller(ctrl)
-
-
-def _raiw_kill(proc):
-    if proc is None or proc.poll() is not None:
-        return
-    try:
-        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-    except Exception:
-        try:
-            proc.kill()
-        except Exception:
-            pass
-
-
-# ---------------------------------------------------------------------------
-# Remove AI watermarks: runner dialog (command + live log, cancellable)
-# ---------------------------------------------------------------------------
-
-class _RaiwRunDialog(Adw.Window):
-    __gtype_name__ = "ImageToolsRaiwRunDialog"
-
-    def __init__(self, argv: list, cwd: str | None = None):
-        super().__init__(title=T["top_menu"])
-        self.set_modal(True)
-        self.set_transient_for(_nautilus_window())
-        self.set_default_size(620, 460)
-        self._argv = argv
-        self._cwd = cwd or os.path.expanduser("~")
-        self._proc = None
-        self._cancelled = False
-        self._closed = False
-        self._done = False
-        _raiw_windows.append(self)
-        self.connect("close-request", self._on_close_request)
-        self.connect("destroy", lambda *_: _raiw_forget(self))
-        _raiw_add_escape(self)
-
-        tv = Adw.ToolbarView()
-        tv.add_top_bar(_raiw_header(T["top_menu"]))
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        box.set_margin_top(14); box.set_margin_bottom(14)
-        box.set_margin_start(16); box.set_margin_end(16)
-
-        cmd_lbl = Gtk.Label(label=f"{T['command']}: {shlex.join(argv)}")
-        cmd_lbl.set_halign(Gtk.Align.START)
-        cmd_lbl.set_wrap(True)
-        cmd_lbl.set_ellipsize(Pango.EllipsizeMode.NONE)
-        cmd_lbl.add_css_class("dim-label")
-        cmd_lbl.set_selectable(True)
-        box.append(cmd_lbl)
-
-        self._status = Gtk.Label(label=T["processing_run"])
-        self._status.set_halign(Gtk.Align.START)
-        box.append(self._status)
-
-        self._bar = Gtk.ProgressBar()
-        self._bar.set_pulse_step(0.08)
-        box.append(self._bar)
-
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        scroll.set_min_content_height(220)
-        self._buf = Gtk.TextBuffer()
-        view = Gtk.TextView.new_with_buffer(self._buf)
-        view.set_editable(False)
-        view.set_monospace(True)
-        view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        scroll.set_child(view)
-        box.append(scroll)
-
-        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        btn_box.set_halign(Gtk.Align.END)
-        self._cancel_btn = Gtk.Button(label=T["cancel"])
-        self._cancel_btn.connect("clicked", self._on_cancel)
-        btn_box.append(self._cancel_btn)
-        self._close_btn = Gtk.Button(label=T["close"])
-        self._close_btn.set_visible(False)
-        self._close_btn.add_css_class("suggested-action")
-        self._close_btn.connect("clicked", lambda _: self.close())
-        btn_box.append(self._close_btn)
-        box.append(btn_box)
-
-        tv.set_content(box)
-        self.set_content(tv)
-        threading.Thread(target=self._run, daemon=True).start()
-        GObject.timeout_add(90, self._pulse)
-
-    def present(self):
-        # Defer mapping to idle: presenting synchronously from a menu-activate
-        # handler (or while the previous modal is still closing) leaves pointer
-        # events stuck on the dying menu/window on Wayland while keyboard focus
-        # already moved on (X/Close dead, Escape alive). One idle turn lets the
-        # menu dismiss and the old modal unmap first.
-        GLib.idle_add(super().present)
-
-    def _pulse(self):
-        if self._closed or self._done:
-            return False
-        if self._proc is None or self._proc.poll() is None:
-            self._bar.pulse()
-            return True
-        return False
-
-    def _on_close_request(self, *_args):
-        self._closed = True
-        self._cancelled = True
-        _raiw_kill(self._proc)
-        _raiw_forget(self)
-        return False
-
-    def _log(self, text: str):
-        GLib.idle_add(self._append, text)
-
-    def _append(self, text: str):
-        if self._closed:
-            return False
-        end = self._buf.get_end_iter()
-        self._buf.insert(end, text)
-        return False
-
-    def _on_cancel(self, _btn):
-        self._cancelled = True
-        _raiw_kill(self._proc)
-
-    def _run(self):
-        try:
-            self._proc = subprocess.Popen(
-                self._argv, cwd=self._cwd,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1, start_new_session=True,
-            )
-        except Exception as exc:  # noqa: BLE001
-            self._log(f"{exc}\n")
-            GLib.idle_add(self._finish, -1)
-            return
-        assert self._proc.stdout is not None
-        for line in self._proc.stdout:
-            self._log(line)
-        rc = self._proc.wait()
-        GLib.idle_add(self._finish, rc)
-
-    def _finish(self, rc: int):
-        if self._closed:
-            return False
-        self._done = True
-        self._bar.set_fraction(1.0 if rc == 0 else 0.0)
-        if self._cancelled:
-            self._status.set_text(T["cancelled"])
-        elif rc == 0:
-            self._status.set_text(T["done"])
-        else:
-            self._status.set_text(T["failed"].format(code=rc))
-        self._cancel_btn.set_visible(False)
-        self._close_btn.set_visible(True)
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Remove AI watermarks: base options dialog (one screen per CLI function)
-# ---------------------------------------------------------------------------
-
-class _RaiwDialog(Adw.Window):
-    __gtype_name__ = "ImageToolsRaiwDialog"
-
-    def __init__(self, title: str, subtitle: str, files_label: str):
-        super().__init__(title=title)
-        self.set_modal(True)
-        self.set_transient_for(_nautilus_window())
-        self.set_default_size(520, 560)
-        self._closed = False
-        self._out = None
-        _raiw_windows.append(self)
-        self.connect("close-request", self._on_close_request)
-        self.connect("destroy", lambda *_: _raiw_forget(self))
-        _raiw_add_escape(self)
-
-        tv = Adw.ToolbarView()
-        tv.add_top_bar(_raiw_header(title))
-        self._outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-
-        top = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        top.set_margin_top(14)
-        top.set_margin_start(18); top.set_margin_end(18)
-
-        sub = Gtk.Label(label=subtitle)
-        sub.set_halign(Gtk.Align.START)
-        sub.set_wrap(True)
-        sub.add_css_class("dim-label")
-        top.append(sub)
-
-        fl = Gtk.Label(label=f"{T['files']}: {files_label}")
-        fl.set_halign(Gtk.Align.START)
-        fl.set_wrap(True)
-        fl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-        top.append(fl)
-        top.append(Gtk.Separator())
-        self._outer.append(top)
-
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self._box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        self._box.set_margin_top(6); self._box.set_margin_bottom(6)
-        self._box.set_margin_start(18); self._box.set_margin_end(18)
-        scroll.set_child(self._box)
-        self._outer.append(scroll)
-
-        tv.set_content(self._outer)
-        self.set_content(tv)
-
-    def present(self):
-        GLib.idle_add(super().present)
-
-    def _on_close_request(self, *_args):
-        self._closed = True
-        _raiw_forget(self)
-        return False
-
-    def _lbl(self, text: str) -> Gtk.Label:
-        lbl = Gtk.Label(label=f"<b>{text}</b>")
-        lbl.set_use_markup(True)
-        lbl.set_halign(Gtk.Align.START)
-        self._box.append(lbl)
-        return lbl
-
-    def _dropdown(self, label: str, items: list, active: int = 0) -> Gtk.DropDown:
-        self._lbl(label)
-        dd = Gtk.DropDown.new_from_strings(items)
-        dd.set_selected(active)
-        self._box.append(dd)
-        return dd
-
-    def _switch(self, label: str, active: bool = False) -> Gtk.Switch:
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        lbl = Gtk.Label(label=label)
-        lbl.set_halign(Gtk.Align.START)
-        lbl.set_hexpand(True)
-        lbl.set_wrap(True)
-        sw = Gtk.Switch()
-        sw.set_active(active)
-        sw.set_halign(Gtk.Align.END)
-        row.append(lbl)
-        row.append(sw)
-        self._box.append(row)
-        return sw
-
-    def _spin(self, label: str, lo: float, hi: float, step: float,
-              value: float, digits: int = 0) -> Gtk.SpinButton:
-        self._lbl(label)
-        adj = Gtk.Adjustment(value=value, lower=lo, upper=hi,
-                             step_increment=step, page_increment=step * 10)
-        sp = Gtk.SpinButton(adjustment=adj, digits=digits)
-        self._box.append(sp)
-        return sp
-
-    def _entry(self, label: str, text: str = "",
-               hint: str = "") -> Gtk.Entry:
-        self._lbl(label)
-        e = Gtk.Entry()
-        e.set_text(text)
-        if hint:
-            e.set_placeholder_text(hint)
-        self._box.append(e)
-        return e
-
-    def _path_row(self, label: str, initial: str,
-                  save: bool = True) -> Gtk.Entry:
-        self._lbl(label)
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        entry = Gtk.Entry()
-        entry.set_text(initial)
-        entry.set_hexpand(True)
-        row.append(entry)
-        btn = Gtk.Button(label=T["browse"])
-        btn.connect("clicked", self._on_browse, entry, save)
-        row.append(btn)
-        self._box.append(row)
-        return entry
-
-    def _on_browse(self, _btn, entry: Gtk.Entry, save: bool):
-        dlg = Gtk.FileDialog(title=T["output"])
-        try:
-            cur = entry.get_text().strip()
-            if cur:
-                base = os.path.dirname(cur) or os.path.expanduser("~")
-                dlg.set_initial_folder(Gio.File.new_for_path(base))
-                dlg.set_initial_name(os.path.basename(cur))
-        except Exception:  # noqa: BLE001
-            pass
-        if save:
-            dlg.save(_nautilus_window(), None, self._on_save_done, entry)
-        else:
-            dlg.select_folder(_nautilus_window(), None, self._on_folder_done, entry)
-
-    def _on_save_done(self, dlg, result, entry: Gtk.Entry):
-        try:
-            entry.set_text(dlg.save_finish(result).get_path())
-        except Exception:  # noqa: BLE001
-            pass
-
-    def _on_folder_done(self, dlg, result, entry: Gtk.Entry):
-        try:
-            entry.set_text(dlg.select_folder_finish(result).get_path())
-        except Exception:  # noqa: BLE001
-            pass
-
-    def _note(self, text: str):
-        lbl = Gtk.Label(label=text)
-        lbl.set_halign(Gtk.Align.START)
-        lbl.set_wrap(True)
-        lbl.add_css_class("dim-label")
-        self._box.append(lbl)
-
-    def _buttons(self, on_run):
-        self._outer.append(Gtk.Separator())
-        bottom = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        bottom.set_margin_top(10); bottom.set_margin_bottom(14)
-        bottom.set_margin_start(18); bottom.set_margin_end(18)
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        box.set_halign(Gtk.Align.END)
-        box.set_hexpand(True)
-        c = Gtk.Button(label=T["cancel"])
-        c.connect("clicked", lambda _: self.close())
-        box.append(c)
-        ok = Gtk.Button(label=T["run"])
-        ok.add_css_class("suggested-action")
-        ok.connect("clicked", on_run)
-        box.append(ok)
-        bottom.append(box)
-        self._outer.append(bottom)
-
-    def _out_for(self, src: str) -> str:
-        if self._out is None:
-            return _raiw_output(src)
-        return self._out.get_text().strip() or _raiw_output(src)
-
-
-def _raiw_single_output(dlg: _RaiwDialog, paths: list) -> None:
-    """Offer a custom output path only for a single file; batch overwrites
-    derive the name per file instead."""
-    if len(paths) == 1:
-        dlg._out = dlg._path_row(T["output"], _raiw_output(paths[0]), True)
-    else:
-        dlg._out = None
-        dlg._note(T["suffix_note"])
-
-
-class _RaiwIdentifyDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwIdentifyDialog"
-
-    def __init__(self, paths: list, video: bool = False):
-        title = T["v_identify"] if video else T["identify"]
-        super().__init__(title, title, _short_list(paths))
-        self._paths = paths
-        self._video = video
-        self._json = self._switch(T["json"], False)
-        self._no_vis = self._switch(T["no_visible"], False)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        argv = ["remove-ai-watermarks"]
-        argv += ["video", "identify"] if self._video else ["identify"]
-        if self._json.get_active():
-            argv.append("--json")
-        if self._no_vis.get_active():
-            argv.append("--no-visible")
-        argv += self._paths
-        self.close()
-        _RaiwRunDialog(argv).present()
-
-
-class _RaiwClassifyDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwClassifyDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["classify"], T["classify"], _short_list(paths))
-        self._paths = paths
-        self._json = self._switch(T["json"], False)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        argv = ["remove-ai-watermarks", "classify"]
-        if self._json.get_active():
-            argv.append("--json")
-        argv += self._paths
-        self.close()
-        _RaiwRunDialog(argv).present()
-
-
-class _RaiwVisibleDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwVisibleDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["visible"], T["visible"], _short_list(paths))
-        self._paths = paths
-        self._mark = self._dropdown(T["mark"], RAIW_IMAGE_MARKS, 0)
-        self._backend = self._dropdown(T["backend"], RAIW_BACKENDS, 0)
-        self._strict = self._switch(T["sensitivity"], False)
-        self._no_detect = self._switch(T["no_detect"], False)
-        self._keep = self._switch(T["keep_metadata"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        mark = RAIW_IMAGE_MARKS[self._mark.get_selected()]
-        backend = RAIW_BACKENDS[self._backend.get_selected()]
-        for src in self._paths:
-            argv = ["remove-ai-watermarks", "visible", src]
-            if mark != "auto":
-                argv += ["--mark", mark]
-            if backend != "auto":
-                argv += ["--backend", backend]
-            if self._strict.get_active():
-                argv += ["--sensitivity", "strict"]
-            if self._no_detect.get_active():
-                argv += ["--no-detect"]
-            if self._keep.get_active():
-                argv += ["--keep-metadata"]
-            argv += ["-o", self._out_for(src)]
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwEraseDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwEraseDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["erase"], T["erase"], _short_list(paths))
-        self._paths = paths
-        self._region = self._entry(T["region"], "", T["region_hint"])
-        self._backend = self._dropdown(T["backend"], RAIW_BACKENDS, 0)
-        self._dilate = self._spin(T["dilate"], 0, 50, 1, 3)
-        self._inpaint = self._dropdown(T["inpaint"], RAIW_INPAINT_METHODS, 0)
-        self._keep = self._switch(T["keep_metadata"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        try:
-            regs = _parse_regions(self._region.get_text())
-        except ValueError:
-            regs = []
-        if not regs:
-            _show_message(T["region_hint"])
-            return
-        backend = RAIW_BACKENDS[self._backend.get_selected()]
-        inpaint = RAIW_INPAINT_METHODS[self._inpaint.get_selected()]
-        for src in self._paths:
-            argv = ["remove-ai-watermarks", "erase", src]
-            for r in regs:
-                argv += ["--region", r]
-            if backend != "auto":
-                argv += ["--backend", backend]
-            argv += ["--dilate", str(int(self._dilate.get_value()))]
-            if backend in ("auto", "cv2"):
-                argv += ["--inpaint-method", inpaint]
-            if self._keep.get_active():
-                argv += ["--keep-metadata"]
-            argv += ["-o", self._out_for(src)]
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwMetadataDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwMetadataDialog"
-
-    def __init__(self, paths: list, video: bool = False):
-        title = T["v_metadata"] if video else T["metadata"]
-        super().__init__(title, title, _short_list(paths))
-        self._paths = paths
-        self._video = video
-        self._mode = self._dropdown(T["options"],
-                                    [T["op_check"], T["op_remove"]], 1)
-        self._remove_all = self._switch(T["remove_all"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        is_remove = self._mode.get_selected() == 1
-        for src in self._paths:
-            argv = ["remove-ai-watermarks"]
-            argv += ["video", "metadata"] if self._video else ["metadata"]
-            argv.append(src)
-            if is_remove:
-                argv.append("--remove")
-                if not self._video and self._remove_all.get_active():
-                    argv.append("--remove-all")
-                if self._out is not None and self._out.get_text().strip():
-                    argv += ["-o", self._out.get_text().strip()]
-                elif self._video or len(self._paths) > 1:
-                    argv += ["-o", _raiw_output(src)]
-            else:
-                argv.append("--check")
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwInvisibleDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwInvisibleDialog"
-
-    def __init__(self, paths: list, full: bool = False):
-        title = T["all"] if full else T["invisible"]
-        super().__init__(title, title, _short_list(paths))
-        self._paths = paths
-        self._full = full
-        if full:
-            self._mark = self._dropdown(T["mark"], RAIW_IMAGE_MARKS, 0)
-            self._backend = self._dropdown(T["backend"], RAIW_BACKENDS, 0)
-        self._force = self._switch(T["force"], True)
-        self._vendor = self._dropdown(T["vendor"], RAIW_VENDORS, 0)
-        self._pipeline = self._dropdown(T["pipeline"], RAIW_PIPELINES, 0)
-        self._strength = self._spin(T["strength"], 0, 1, 0.05, 0.0, digits=2)
-        self._seed = self._spin(T["seed"], 0, 999999, 1, 0)
-        self._cpu = self._switch(T["cpu_offload"], False)
-        self._maxres = self._spin(T["max_res"], 0, 8192, 256, 0)
-        self._tile = self._switch(T["tile"], False)
-        self._keep = self._switch(T["keep_metadata"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _diffusion_opts(self, argv: list) -> list:
-        vendor = RAIW_VENDORS[self._vendor.get_selected()]
-        pipeline = RAIW_PIPELINES[self._pipeline.get_selected()]
-        if vendor != "auto":
-            argv += ["--vendor", vendor]
-        if pipeline != "qwen-zimage":
-            argv += ["--pipeline", pipeline]
-        strength = self._strength.get_value()
-        if strength > 0:
-            argv += ["--strength", f"{strength:.2f}"]
-        argv += ["--seed", str(int(self._seed.get_value()))]
-        if self._cpu.get_active():
-            argv.append("--cpu-offload")
-        maxres = int(self._maxres.get_value())
-        if maxres > 0:
-            argv += ["--max-resolution", str(maxres)]
-        if self._tile.get_active():
-            argv.append("--tile")
-        if self._keep.get_active():
-            argv.append("--keep-metadata")
-        return argv
-
-    def _on_run(self, _btn):
-        for src in self._paths:
-            argv = ["remove-ai-watermarks",
-                    "all" if self._full else "invisible", src]
-            if self._full:
-                mark = RAIW_IMAGE_MARKS[self._mark.get_selected()]
-                backend = RAIW_BACKENDS[self._backend.get_selected()]
-                if mark != "auto":
-                    argv += ["--mark", mark]
-                if backend != "auto":
-                    argv += ["--backend", backend]
-            if self._force.get_active():
-                argv.append("--force")
-            argv = self._diffusion_opts(argv)
-            argv += ["-o", self._out_for(src)]
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwBatchDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwBatchDialog"
-
-    def __init__(self, dirs: list, video: bool = False):
-        title = T["v_batch"] if video else T["batch"]
-        super().__init__(title, title, _short_list(dirs))
-        self._dirs = dirs
-        self._video = video
-        modes = RAIW_VIDEO_BATCH_MODES if video else RAIW_BATCH_MODES
-        self._mode = self._dropdown(T["mode"], modes, len(modes) - 1)
-        first = dirs[0] if dirs else os.path.expanduser("~")
-        default_out = f"{first.rstrip('/')}_clean" if len(dirs) == 1 else first
-        self._outdir = self._path_row(T["output_dir"], default_out, False)
-        if not video:
-            self._pipeline = self._dropdown(T["pipeline"], RAIW_PIPELINES, 0)
-            self._force = self._switch(T["force"], True)
-            self._cpu = self._switch(T["cpu_offload"], False)
-        else:
-            self._with_inv = self._switch(T["with_invisible"], False)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        outdir = self._outdir.get_text().strip()
-        for d in self._dirs:
-            modes = RAIW_VIDEO_BATCH_MODES if self._video else RAIW_BATCH_MODES
-            argv = ["remove-ai-watermarks"]
-            argv += ["video", "batch"] if self._video else ["batch"]
-            argv += [d, "--mode", modes[self._mode.get_selected()]]
-            if outdir:
-                argv += ["--output-dir", outdir]
-            if self._video:
-                if self._with_inv.get_active():
-                    argv.append("--invisible")
-            else:
-                pipeline = RAIW_PIPELINES[self._pipeline.get_selected()]
-                if pipeline != "qwen-zimage":
-                    argv += ["--pipeline", pipeline]
-                if self._force.get_active():
-                    argv.append("--force")
-                if self._cpu.get_active():
-                    argv.append("--cpu-offload")
-            _RaiwRunDialog(argv, cwd=d).present()
-        self.close()
-
-
-class _RaiwVideoVisibleDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwVideoVisibleDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["v_visible"], T["v_visible"], _short_list(paths))
-        self._paths = paths
-        self._mark = self._dropdown(T["mark"], RAIW_VIDEO_MARKS, 0)
-        self._backend = self._dropdown(T["backend"], RAIW_BACKENDS, 0)
-        self._no_temporal = self._switch(T["no_temporal"], False)
-        self._keep = self._switch(T["keep_metadata"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        mark = RAIW_VIDEO_MARKS[self._mark.get_selected()]
-        backend = RAIW_BACKENDS[self._backend.get_selected()]
-        for src in self._paths:
-            argv = ["remove-ai-watermarks", "video", "visible", src]
-            if mark != "auto":
-                argv += ["--mark", mark]
-            if backend != "auto":
-                argv += ["--backend", backend]
-            if self._no_temporal.get_active():
-                argv.append("--no-temporal-consistency")
-            if self._keep.get_active():
-                argv.append("--keep-metadata")
-            argv += ["-o", self._out_for(src)]
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwVideoAllDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwVideoAllDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["v_all"], T["v_all"], _short_list(paths))
-        self._paths = paths
-        self._with_inv = self._switch(T["with_invisible"], False)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        for src in self._paths:
-            argv = ["remove-ai-watermarks", "video", "all", src]
-            argv += ["-o", self._out_for(src)]
-            if self._with_inv.get_active():
-                argv.append("--invisible")
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-class _RaiwVideoInvisibleDialog(_RaiwDialog):
-    __gtype_name__ = "ImageToolsRaiwVideoInvisibleDialog"
-
-    def __init__(self, paths: list):
-        super().__init__(T["v_invisible"], T["v_invisible"], _short_list(paths))
-        self._paths = paths
-        self._noise = self._spin(T["noise_std"], 0.01, 1.0, 0.01, 0.15, digits=2)
-        self._longside = self._spin(T["long_side"], 256, 4096, 64, 1024)
-        self._fps = self._spin(T["fps"], 0, 120, 1, 0)
-        self._bsize = self._spin(T["batch_size"], 1, 64, 1, 8)
-        self._seed = self._spin(T["seed"], 0, 999999, 1, 0)
-        _raiw_single_output(self, paths)
-        self._buttons(self._on_run)
-
-    def _on_run(self, _btn):
-        for src in self._paths:
-            argv = ["remove-ai-watermarks", "video", "invisible", src,
-                    "--noise-std", f"{self._noise.get_value():.2f}",
-                    "--long-side", str(int(self._longside.get_value())),
-                    "--batch-size", str(int(self._bsize.get_value())),
-                    "--seed", str(int(self._seed.get_value()))]
-            fps = int(self._fps.get_value())
-            if fps > 0:
-                argv += ["--fps", str(fps)]
-            argv += ["-o", self._out_for(src)]
-            _RaiwRunDialog(argv, cwd=os.path.dirname(src) or None).present()
-        self.close()
-
-
-# ---------------------------------------------------------------------------
 # Annotate: single-image editor (rect / ellipse / arrow / text + undo-redo)
 # ---------------------------------------------------------------------------
 # Ported from the former standalone annotate-image.py extension. Kept its own
@@ -2702,8 +1554,8 @@ _ANNOT_ICONS = {
 }
 _ANNOT_SHAPES = ("rect", "ellipse")
 
-# Same GC guard as _raiw_windows: nautilus-python drops its Python reference as
-# soon as .present() returns, and a GC'd window stops responding to clicks.
+# GC guard: nautilus-python drops its Python reference as soon as .present()
+# returns, and a GC'd window stops responding to clicks.
 _annot_windows: list = []
 
 
@@ -2808,7 +1660,7 @@ def _annot_add_shortcuts(win):
     """Bind Ctrl+Z / Ctrl+Y (plus the Shift variants) to the window's undo and
     redo, so the keyboard and the header buttons share one code path."""
     ctrl = Gtk.ShortcutController()
-    # MANAGED (as in _raiw_add_escape), not GLOBAL: GtkWindow *is* a
+    # MANAGED, not GLOBAL: GtkWindow *is* a
     # GtkShortcutManager, so this covers the whole window and fires whenever it
     # is focused, without escaping past it.
     ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
@@ -3293,98 +2145,6 @@ class ImageToolsExtension(GObject.GObject, Nautilus.MenuProvider):
         item.connect("activate", cb, *args)
         submenu.append_item(item)
 
-    def _raiw_entry(self, name, label, dialog):
-        return (name, label,
-                lambda *_a, d=dialog: d().present() if _check_bin() else None)
-
-    def _raiw_submenu(self, images, videos, dirs):
-        entries = []
-        files = images + videos
-
-        if files:
-            entries.append(self._raiw_entry(
-                "RaiwIdentify", T["identify"],
-                lambda: _RaiwIdentifyDialog(files, False)))
-        if images:
-            entries.append(self._raiw_entry(
-                "RaiwClassify", T["classify"],
-                lambda: _RaiwClassifyDialog(images)))
-            entries.append(self._raiw_entry(
-                "RaiwVisible", T["visible"],
-                lambda: _RaiwVisibleDialog(images)))
-            entries.append(self._raiw_entry(
-                "RaiwErase", T["erase"],
-                lambda: _RaiwEraseDialog(images)))
-            entries.append(self._raiw_entry(
-                "RaiwInvisible", T["invisible"],
-                lambda: _RaiwInvisibleDialog(images, False)))
-            entries.append(self._raiw_entry(
-                "RaiwAll", T["all"],
-                lambda: _RaiwInvisibleDialog(images, True)))
-        if files:
-            entries.append(self._raiw_entry(
-                "RaiwMetadata", T["metadata"],
-                lambda: _RaiwMetadataDialog(files, False)))
-        if videos:
-            entries.append(self._raiw_entry(
-                "RaiwVideoIdentify", T["v_identify"],
-                lambda: _RaiwIdentifyDialog(videos, True)))
-            entries.append(self._raiw_entry(
-                "RaiwVideoAll", T["v_all"],
-                lambda: _RaiwVideoAllDialog(videos)))
-            entries.append(self._raiw_entry(
-                "RaiwVideoVisible", T["v_visible"],
-                lambda: _RaiwVideoVisibleDialog(videos)))
-            entries.append(self._raiw_entry(
-                "RaiwVideoMetadata", T["v_metadata"],
-                lambda: _RaiwMetadataDialog(videos, True)))
-            entries.append(self._raiw_entry(
-                "RaiwVideoInvisible", T["v_invisible"],
-                lambda: _RaiwVideoInvisibleDialog(videos)))
-        if dirs:
-            entries.append(self._raiw_entry(
-                "RaiwBatch", T["batch"],
-                lambda: _RaiwBatchDialog(dirs, False)))
-            entries.append(self._raiw_entry(
-                "RaiwVideoBatch", T["v_batch"],
-                lambda: _RaiwBatchDialog(dirs, True)))
-
-        if not entries:
-            return None
-        submenu = Nautilus.Menu()
-        for name, label, cb in entries:
-            self._add(submenu, name, label, cb, tip=T["top_tip"])
-        item = Nautilus.MenuItem(
-            name="ImageTools::Raiw",
-            label=T["top_menu"],
-            tip=T["top_tip"],
-        )
-        item.set_submenu(submenu)
-        return item
-
-    def _ai_tools_submenu(self, images, videos, dirs):
-        """Ferramentas de IA: Upscale… (imagens) + Remover marcas d'água de IA."""
-        submenu = Nautilus.Menu()
-        has_items = False
-        if images and run_upscale_for is not None:
-            self._add(submenu, "AiUpscale", T["ai_upscale"],
-                      lambda *_a: run_upscale_for(images),
-                      tip=T["ai_upscale_tip"])
-            has_items = True
-        raiw = self._raiw_submenu(images, videos, dirs)
-        if raiw is not None:
-            submenu.append_item(raiw)
-            has_items = True
-        if not has_items:
-            return None
-        item = Nautilus.MenuItem(
-            name="ImageTools::AiTools",
-            label=T["ai_top_menu"],
-            tip=T["ai_top_tip"],
-        )
-        item.set_submenu(submenu)
-        return item
-
     def _convert_item(self, images):
         try:
             from media_core.presets_manager import Presets
@@ -3416,16 +2176,13 @@ class ImageToolsExtension(GObject.GObject, Nautilus.MenuProvider):
 
     def _classify(self, paths):
         images = [p for p in paths if os.path.isfile(p) and _is_image_path(p)]
-        videos = [p for p in paths if os.path.isfile(p) and _is_raiw_video(p)]
-        dirs = [p for p in paths if os.path.isdir(p)]
-        known = len(images) + len(videos) + len(dirs)
-        if known != len(paths):
-            return [], [], []
-        return images, videos, dirs
+        if len(images) != len(paths):
+            return []
+        return images
 
     def _menu_for(self, paths):
-        images, videos, dirs = self._classify(paths)
-        if not (images or videos or dirs):
+        images = self._classify(paths)
+        if not images:
             return []
 
         top = Nautilus.MenuItem(
@@ -3436,9 +2193,9 @@ class ImageToolsExtension(GObject.GObject, Nautilus.MenuProvider):
         submenu = Nautilus.Menu()
         top.set_submenu(submenu)
 
-        # Pillow ops read every selected file with Image.open, so they only
-        # appear when the selection is images and nothing else.
-        if images and len(images) == len(paths):
+        # Pillow ops read every selected file with Image.open, so the menu
+        # only appears when the selection is all images.
+        if images:
             self._add(submenu, "Grayscale", T["grayscale"],
                       self._cb_simple, images, op_grayscale)
             self._add(submenu, "Invert", T["invert"],
@@ -3459,10 +2216,6 @@ class ImageToolsExtension(GObject.GObject, Nautilus.MenuProvider):
                 self._add(submenu, "Annotate", T["an_label"],
                           self._cb_annotate, images[0], tip=T["an_tip"])
             submenu.append_item(self._convert_item(images))
-
-        ai = self._ai_tools_submenu(images, videos, dirs)
-        if ai is not None:
-            submenu.append_item(ai)
 
         return [top]
 
