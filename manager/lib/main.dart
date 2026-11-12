@@ -36,13 +36,11 @@ class _RedClawAppState extends State<RedClawApp> {
       supportedLocales: const [
         Locale('pt', 'BR'), Locale('en'), Locale('es'), Locale('fr'), Locale('de')
       ],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates.isEmpty
-          ? const []
-          : const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,
