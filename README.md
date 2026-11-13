@@ -1,4 +1,40 @@
-# 🐚 Nautilus Python Extensions
+# 🦀 RedClaw File Tools
+
+**RedClaw File Tools** is an evolving collection of Linux file-manager extensions managed by a multilingual **Flutter AppImage**. It preserves the original Nautilus Python extensions while introducing independent installation for other file managers.
+
+> **Current status:** the universal manager and build workflow are the initial implementation. Nautilus retains the original plugins; Dolphin, Nemo, Caja, Thunar and (experimental) PCManFM-Qt currently support only selected portable actions. See [universal architecture and limitations](docs/universal/architecture.md). Do not interpret compatibility as full feature parity.
+
+## AppImage manager
+
+GitHub Releases: [Download RedClaw File Tools](https://github.com/zonaro/RedClaw-File-Tools/releases).
+
+The manager detects **all installed supported file managers**, lets you choose one, recommends extensions based on each manager's capabilities, previews missing host dependencies and installs, updates or removes **each extension independently for each manager**. It supports **Portuguese (BR), English, Spanish, French and German**.
+
+The AppImage may be closed after installation; menus run from user-local files. On Linux, system dependencies are installed through apt, dnf, pacman or zypper after confirmation (using PolicyKit for privileges). Other package managers require manual handling for now. Unmanaged legacy installations are protected from overwrites.
+
+### Development
+
+```bash
+python3 backend/redclaw.py --json inventory
+python3 -m unittest discover -s backend/tests -p 'test_*.py' -v
+cd manager
+flutter run -d linux
+```
+
+### Build and versioning
+
+```bash
+bash scripts/build-appimage.sh
+```
+
+Builds are named `YY.DDD.HHMM` using the **America/Sao_Paulo** date and time at compilation. CI runs [the AppImage release workflow](.github/workflows/appimage-release.yml), publishes `RedClaw_File_Tools-<version>-x86_64.AppImage`, and creates **English-language GitHub Releases** with SHA-256 checksums.
+
+**Optional AI watermark integration:** tracked in [#72](https://github.com/zonaro/RedClaw-File-Tools/issues/72); it is not installed with the default extensions.
+
+---
+
+## Existing Nautilus extensions (legacy documentation)
+
 
 > A collection of productivity-focused Python extensions for **Nautilus (GNOME Files)**, adding powerful tools directly into the right-click context menu.
 
@@ -97,7 +133,7 @@ coexiste com o PPA (avisa se `/usr/share/zonaro-nautilus-extensions` existir).
 
 ```bash
 # Tudo (one-liner, mesmo comportamento de antes no Fedora):
-curl -fsSL https://raw.githubusercontent.com/zonaro/Nautilus-Extensions/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/zonaro/RedClaw-File-Tools/main/install.sh | bash
 
 # Local:
 ./install.sh --list                              # lista os 28 slugs
@@ -393,7 +429,7 @@ Right-click a folder → **Personalizar…** (*Customize…*) opens a layered ed
 
 See the [editor guide, portable SVG format and acceptance checklist](docs/folder-icon-editor.md).
 Development and acceptance are tracked in the existing [GitHub Project](https://github.com/users/zonaro/projects/6)
-and [correction milestone #42](https://github.com/zonaro/Nautilus-Extensions/issues/42).
+and [correction milestone #42](https://github.com/zonaro/RedClaw-File-Tools/issues/42).
 
 - **Image layers** — any PNG/JPEG/WebP/SVG you pick from disk, or drag from Nautilus / a browser onto the preview; **Ctrl+V** pastes an image from the clipboard (a copied file or a copied picture). The **Add image…** menu offers three explicit targets so nothing is silently overwritten: *Add as layer* (new image layer on top), *Replace selected layer* (overwrites the current image layer) and *Use as base image* (custom background in place of the themed folder icon — also available via right-click on any image layer row)
 - **Detect icon…** — a menu item under *Personalizar…* and a *Detect icon…* button inside the editor scan the folder (two levels down, hidden and build folders skipped) for image files whose names look like icons in seven languages (favicon, logo, brasão, escudo, …); one match goes straight onto the stack, several open a chooser with previews, none report "No icon found" — the chosen file lands as a badge-sized image layer (scale 70), ready to adjust
