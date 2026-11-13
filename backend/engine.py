@@ -294,6 +294,9 @@ def set_enabled(fm: str, slug: str, *, enabled: bool, confirmed: bool) -> dict:
     if status == ("installed" if enabled else "disabled"):
         return {"ok": True, "file_manager": fm, "slug": slug, "status": status}
     mapping = _entrypoints(fm, entry, record)
+    for name in mapping:
+        if _other_owner(state, name, key):
+            raise RuntimeError("Cannot toggle shared extension entry point: " + name)
     modes = record.get("modes", {})
     original_uca = (
         adapters.thunar_file().read_bytes()
