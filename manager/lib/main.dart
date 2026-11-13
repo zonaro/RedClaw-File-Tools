@@ -152,6 +152,12 @@ class _ManagerHomeState extends State<ManagerHome> {
           ? await widget.inventoryLoader!()
           : await _cli('inventory');
       if (!mounted) return;
+      final extLanguage = data['extension_language']?.toString();
+      if (extLanguage != null && extLanguage != 'auto' &&
+          languageNames.containsKey(extLanguage) &&
+          extLanguage != widget.language) {
+        widget.onLanguageChange(extLanguage);
+      }
       final managers = data['file_managers'] as List<dynamic>? ?? [];
       setState(() {
         inventory = data;
@@ -545,8 +551,14 @@ class _ManagerHomeState extends State<ManagerHome> {
                   value: entry.key,
                   child: Text(entry.value),
                 )).toList(),
-                onChanged: (value) {
-                  if (value != null) widget.onLanguageChange(value);
+                onChanged: (value) async {
+                  if (value == null) return;
+                  try {
+                    await _cli('language', ['--set', value]);
+                    if (mounted) widget.onLanguageChange(value);
+                  } catch (exception) {
+                    _message('${t('error')}: $exception');
+                  }
                 },
               ),
             ),
