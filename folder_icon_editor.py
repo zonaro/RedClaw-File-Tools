@@ -3066,8 +3066,8 @@ class _Editor:
         export_source.set_actions(Gdk.DragAction.COPY)
         export_source.connect("prepare", self._on_export_drag_prepare)
         self._export_drag_handle.add_controller(export_source)
-        frame.set_child(self.preview)
-        box.append(frame)
+        # The frame was already appended before the shortcut legend; do not
+        # reparent an existing Gtk widget (gtk_box_append critical).
         box.append(self._export_drag_handle)
         return box
 
