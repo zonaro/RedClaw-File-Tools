@@ -41,6 +41,13 @@ jobs:
         run: /usr/bin/python3 -m pip install --user --upgrade 'Pillow>=9.5,<12'
       - name: Compile Python sources
         run: /usr/bin/python3 -m py_compile folder_icon_editor.py folder-color-revival.py
+      - name: Verify persisted splitter preference regression tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          /usr/bin/python3 -m pytest tests/unit/test_folder_icon_ui.py \
+            -k 'pane_preferences_are_bounded or editor_splitter_sizes_persist_without_overwriting_other_settings' \
+            -q
       - name: Validate resizable panes and existing editor interactions under Xvfb
         env:
           GDK_BACKEND: x11
