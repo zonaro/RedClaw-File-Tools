@@ -147,6 +147,7 @@ def inventory() -> dict:
         "managed_count": len(state["installed"]),
         "legacy_manager_present": legacy_manager_path().is_file() or
                                   legacy_manager_path().is_symlink(),
+        "extension_language": extension_language(),
     }
 
 
@@ -270,6 +271,33 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
         raise
     return {"ok": True, "file_manager": fm, "slug": slug, "status": "installed",
             "files_installed": len(mapping), "dependencies": dep}
+
+
+EXTENSION_LANGUAGES = frozenset({"pt", "en", "es", "fr", "de"})
+
+
+def extension_language() -> str:
+    """Read the locale override used by existing Nautilus Python extensions."""
+    path = adapters.config_home() / "nautilus-extensions/language"
+    if not path.exists():
+        return "auto"
+    raw = path.read_text(encoding="utf-8").strip().lower().replace("-", "_")
+    raw = raw.split(".")[0].split("@")[0]
+    code = raw.split("_")[0]
+    return code if code in EXTENSION_LANGUAGES else "auto"
+
+
+def set_extension_language(language: str) -> dict:
+    """Persist the old manager's language setting without changing files."""
+    language = language.lower().replace("-", "_").split("_")[0]
+    if language != "auto" and language not in EXTENSION_LANGUAGES:
+        raise ValueError("Unsupported extension language: " + language)
+    path = adapters.config_home() / "nautilus-extensions/language"
+    if language == "auto":
+        path.unlink(missing_ok=True)
+    else:
+        _atomic_write(path, (("pt_br" if language == "pt" else language) + "\n").encode())
+    return {"ok": True, "language": language}
 
 
 def legacy_manager_path() -> Path:
