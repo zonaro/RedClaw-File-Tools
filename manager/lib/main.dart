@@ -400,7 +400,7 @@ class _ManagerHomeState extends State<ManagerHome> {
     final isDisabled = status == 'disabled';
     final isManaged = isInstalled || isDisabled;
     final canManage = support != 'unsupported' && status != 'external' &&
-        status != 'modified' && current != null;
+        status != 'external_disabled' && status != 'modified' && current != null;
     final busyHere = busy == '$current/${entry['id']}';
     final explanation = switch (status) {
       'external' => t('external_desc'),
