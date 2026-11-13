@@ -310,6 +310,41 @@ def test_editor_widgets_exist():
 
 
 @_gui_skip
+def test_editor_three_resizable_panels():
+    """Tools/canvas/layers must be independent draggable GTK4 Paned regions."""
+    ed = _make_editor()
+    try:
+        assert ed.dialog.get_resizable()
+        assert isinstance(ed.main_split, Gtk.Paned)
+        assert isinstance(ed.right_split, Gtk.Paned)
+        assert ed.main_split.get_start_child() is ed.tools_column
+        assert ed.main_split.get_end_child() is ed.right_split
+        assert ed.right_split.get_start_child() is ed.preview_column
+        assert ed.right_split.get_end_child() is ed.layers_column
+        assert ed.main_split.get_wide_handle()
+        assert ed.right_split.get_wide_handle()
+
+        ed._apply_responsive_layout(1100)
+        assert ed.main_split.get_orientation() == Gtk.Orientation.HORIZONTAL
+        assert ed.right_split.get_orientation() == Gtk.Orientation.HORIZONTAL
+        ed.main_split.set_position(310)
+        ed.right_split.set_position(430)
+        ed._apply_responsive_layout(1160)
+        assert ed.main_split.get_position() == 310
+        assert ed.right_split.get_position() == 430
+
+        ed._apply_responsive_layout(560)
+        assert ed.main_split.get_orientation() == Gtk.Orientation.VERTICAL
+        assert ed.right_split.get_orientation() == Gtk.Orientation.VERTICAL
+        assert ed.preview.get_parent() is not None
+        assert ed.listbox.get_parent() is not None
+        ed._apply_responsive_layout(1100)
+        assert ed.main_split.get_orientation() == Gtk.Orientation.HORIZONTAL
+    finally:
+        ed.dialog.destroy()
+
+
+@_gui_skip
 def test_palette_colour_applies_to_all_rows_and_swatches_distinct():
     ed = _make_editor()
     try:
