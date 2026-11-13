@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list")
     sub.add_parser("doctor")
     sub.add_parser("version")
-    for cmd in ("plan", "install", "uninstall"):
+    for cmd in ("plan", "install", "uninstall", "enable", "disable"):
         command = sub.add_parser(cmd)
         command.add_argument("--fm", required=True, choices=engine.SUPPORTED)
         command.add_argument("--slug", required=True)
@@ -59,6 +59,10 @@ def main(argv: list[str] | None = None) -> int:
                                   confirmed=args.yes)
         elif args.command == "uninstall":
             data = engine.uninstall(args.fm, args.slug, confirmed=args.yes)
+        elif args.command in ("enable", "disable"):
+            data = engine.set_enabled(args.fm, args.slug,
+                                      enabled=args.command == "enable",
+                                      confirmed=args.yes)
         else:
             data = {"ok": True, "outputs": portable.run(args.slug, args.action, args.paths)}
         if as_json:
