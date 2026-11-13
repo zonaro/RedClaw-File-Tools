@@ -174,7 +174,7 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
     if not confirmed:
         raise ValueError("Installation requires explicit --yes confirmation.")
     planned = plan(fm, slug)
-    if planned["conflicts"]:
+    if planned.get("conflicts"):
         raise RuntimeError("Remove conflicting extensions first: " + ", ".join(planned["conflicts"]))
     if planned["status"] == "external":
         raise RuntimeError("An unmanaged Nautilus installation already exists. Refusing to overwrite it.")
