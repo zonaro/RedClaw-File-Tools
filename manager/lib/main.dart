@@ -303,6 +303,23 @@ class _ManagerHomeState extends State<ManagerHome> {
     }
   }
 
+  Future<void> _toggle(Map<String, dynamic> entry, {required bool enable}) async {
+    final manager = currentManager;
+    if (manager == null || busy != null) return;
+    final slug = entry['id'] as String;
+    setState(() => busy = '$manager/$slug');
+    try {
+      await _cli(enable ? 'enable' : 'disable',
+          ['--fm', manager, '--slug', slug, '--yes']);
+      _message('${t(enable ? 'enabled_success' : 'disabled_success')} ${t('manual_restart')}');
+      await _refresh();
+    } catch (exception) {
+      _message('${t('error')}: $exception');
+    } finally {
+      if (mounted) setState(() => busy = null);
+    }
+  }
+
   String _recommendation(Map<String, dynamic> fmInfo) {
     final state = fmInfo['recommendation']?.toString() ?? 'incompatible';
     return t(state);
@@ -323,6 +340,8 @@ class _ManagerHomeState extends State<ManagerHome> {
     final status = compatibility['status']?.toString() ?? 'not_installed';
     final recommendation = compatibility['recommendation']?.toString() ?? 'incompatible';
     final isInstalled = status == 'installed';
+    final isDisabled = status == 'disabled';
+    final isManaged = isInstalled || isDisabled;
     final canManage = support != 'unsupported' && status != 'external' &&
         status != 'modified' && current != null;
     final busyHere = busy == '$current/${entry['id']}';
@@ -357,7 +376,7 @@ class _ManagerHomeState extends State<ManagerHome> {
                   avatar: const Icon(Icons.check_circle_outline, size: 16),
                   label: Text(t('installed')),
                 ),
-              if (status == 'external' || status == 'modified')
+              if (status == 'external' || status == 'modified' || isDisabled)
                 Chip(label: Text(t(status)), visualDensity: VisualDensity.compact),
             ],
           ),
@@ -369,14 +388,21 @@ class _ManagerHomeState extends State<ManagerHome> {
           if (canManage) ...[
             const SizedBox(height: 12),
             Wrap(spacing: 8, children: [
-              FilledButton.tonalIcon(
-                onPressed: busy == null ? () => _change(entry, remove: false) : null,
-                icon: busyHere
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(isInstalled ? Icons.system_update_alt : Icons.add_circle_outline),
-                label: Text(isInstalled ? t('update') : t('install')),
-              ),
-              if (isInstalled)
+              if (!isDisabled)
+                FilledButton.tonalIcon(
+                  onPressed: busy == null ? () => _change(entry, remove: false) : null,
+                  icon: busyHere
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(isInstalled ? Icons.system_update_alt : Icons.add_circle_outline),
+                  label: Text(isInstalled ? t('update') : t('install')),
+                ),
+              if (isManaged)
+                OutlinedButton.icon(
+                  onPressed: busy == null ? () => _toggle(entry, enable: isDisabled) : null,
+                  icon: Icon(isDisabled ? Icons.play_arrow_outlined : Icons.pause_circle_outline),
+                  label: Text(t(isDisabled ? 'enable' : 'disable')),
+                ),
+              if (isManaged)
                 OutlinedButton.icon(
                   onPressed: busy == null ? () => _change(entry, remove: true) : null,
                   icon: const Icon(Icons.delete_outline),
@@ -404,7 +430,9 @@ class _ManagerHomeState extends State<ManagerHome> {
         return false;
       }
       final info = (entry['compatibility'] as Map?)?[currentManager] as Map?;
-      if (filter == 'installed') return info?['status'] == 'installed';
+      if (filter == 'installed') {
+        return info?['status'] == 'installed' || info?['status'] == 'disabled';
+      }
       if (filter == 'recommended') return info?['recommendation'] == 'recommended';
       return true;
     }).toList();
