@@ -34,3 +34,7 @@ jobs:
         run: python3 backend/redclaw.py --json inventory | python3 -m json.tool > /dev/null
       - name: Validate AppImage build script
         run: bash -n scripts/build-appimage.sh
+      - name: Validate landing page JavaScript
+        run: |
+          node --check docs/exts.js
+          node --check docs/i18n.js
