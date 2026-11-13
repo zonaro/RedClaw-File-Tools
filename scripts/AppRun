@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# RedClaw File Tools AppImage launcher.
+# Flutter's platform embedder defaults to Skia (see patch_flutter_linux_runner.py)
+# because Impeller may produce black/offset canvases on Wayland + some GPUs.
+set -euo pipefail
+
+APPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export REDCLAW_BACKEND="$APPDIR/usr/share/redclaw-file-tools/backend/redclaw.py"
+export REDCLAW_PAYLOAD="$APPDIR/usr/share/redclaw-file-tools/payload"
+
+# GL/EGL/Wayland/driver libraries deliberately come from the host.
+# Only Flutter runtime and non-driver AppImage dependencies are searched here.
+export LD_LIBRARY_PATH="$APPDIR/usr/bin/lib:$APPDIR/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+# All overrides are opt-in. Native Wayland remains the default where supported.
+# Launcher switches are intercepted here and never reach the Flutter Dart app.
+while (( $# > 0 )); do
+  case "$1" in
+    --redclaw-impeller)
+      export REDCLAW_ENABLE_IMPELLER=1
+      shift
+      ;;
+    --redclaw-skia)
+      export REDCLAW_ENABLE_IMPELLER=0
+      shift
+      ;;
+    --redclaw-x11)
+      export GDK_BACKEND=x11
+      shift
+      ;;
+    --redclaw-wayland)
+      export GDK_BACKEND=wayland
+      shift
+      ;;
+    --redclaw-software)
+      export FLUTTER_LINUX_RENDERER=software
+      shift
+      ;;
+    --redclaw-diagnostics)
+      printf 'RedClaw File Tools Linux renderer diagnostics\n'
+      printf 'AppDir: %s\n' "$APPDIR"
+      printf 'Session: %s\n' "${XDG_SESSION_TYPE:-unknown}"
+      printf 'GDK_BACKEND: %s\n' "${GDK_BACKEND:-auto}"
+      printf 'Impeller: %s (0/default = Skia)\n' "${REDCLAW_ENABLE_IMPELLER:-0}"
+      printf 'Flutter renderer: %s (default = OpenGL)\n' "${FLUTTER_LINUX_RENDERER:-opengl}"
+      printf 'DISPLAY: %s\n' "${DISPLAY:-unset}"
+      printf 'WAYLAND_DISPLAY: %s\n' "${WAYLAND_DISPLAY:-unset}"
+      printf 'Bundled host graphics libraries (must be empty):\n'
+      if [[ -d "$APPDIR/usr/lib" ]]; then
+        find "$APPDIR/usr/lib" -type f \( \
+          -name 'libGL*.so*' -o -name 'libEGL*.so*' \
+          -o -name 'libGLES*.so*' -o -name 'libgbm.so*' \
+          -o -name 'libdrm.so*' -o -name 'libwayland-*.so*' \
+        \) -print
+      fi
+      exit 0
+      ;;
+    --redclaw-help)
+      cat <<'USAGE'
+RedClaw File Tools AppImage graphics options:
+  (default)             Skia renderer, native session backend.
+  --redclaw-impeller    Try Flutter Impeller instead of Skia.
+  --redclaw-skia        Explicitly use Skia.
+  --redclaw-x11         Use XWayland/X11 instead of native Wayland.
+  --redclaw-wayland     Force native Wayland.
+  --redclaw-software    Use experimental Flutter software rendering.
+  --redclaw-diagnostics Show rendering settings without starting the UI.
+
+Examples:
+  ./RedClaw_File_Tools.AppImage
+  ./RedClaw_File_Tools.AppImage --redclaw-x11
+  ./RedClaw_File_Tools.AppImage --redclaw-software
+  ./RedClaw_File_Tools.AppImage --redclaw-x11 --redclaw-skia
+
+Existing GDK_BACKEND and REDCLAW_ENABLE_IMPELLER environment overrides are
+preserved unless explicitly changed by a launcher switch.
+USAGE
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+exec "$APPDIR/usr/bin/redclaw_file_tools" "$@"
