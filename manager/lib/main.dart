@@ -401,7 +401,6 @@ class _ManagerHomeState extends State<ManagerHome> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: widget.language,
-                tooltip: t('languages'),
                 items: languageNames.entries.map((entry) => DropdownMenuItem(
                   value: entry.key,
                   child: Text(entry.value),
