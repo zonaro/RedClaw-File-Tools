@@ -12,6 +12,7 @@ BINARIES = {
     "git": ("git",), "ffmpeg": ("ffmpeg",), "ffmpegthumbnailer": ("ffmpegthumbnailer",),
     "ghostscript": ("gs",), "rsync": ("rsync",), "ripgrep": ("rg",),
     "p7zip": ("7z", "7zz", "7za"), "unrar": ("unrar",), "poppler": ("pdfinfo",),
+    "uv": ("uv",),
 }
 MODULES = {
     "pillow": "PIL", "pypdf": "pypdf", "mutagen": "mutagen",
@@ -30,21 +31,21 @@ PACKAGES = {
         "gtk4": "gir1.2-gtk-4.0", "libadwaita": "gir1.2-adw-1", "nautilus-extensions": "gir1.2-nautilus-4.0",
         "pillow": "python3-pil", "pypdf": "python3-pypdf", "mutagen": "python3-mutagen",
         "cairo": "python3-cairo", "libarchive-c": "python3-libarchive-c",
-        "pangocairo": "gir1.2-pangocairo-1.0", "p7zip": "7zip", "poppler": "poppler-utils", "clipboard": "xclip",
+        "pangocairo": "gir1.2-pangocairo-1.0", "p7zip": "7zip", "poppler": "poppler-utils", "clipboard": "xclip", "uv": "uv",
     },
     "pacman": {
         "python3": "python", "nautilus-python": "python-nautilus", "gobject": "python-gobject",
         "gtk4": "gtk4", "libadwaita": "libadwaita", "nautilus-extensions": "nautilus",
         "pillow": "python-pillow", "pypdf": "python-pypdf", "mutagen": "python-mutagen",
         "cairo": "python-cairo", "libarchive-c": "python-libarchive-c",
-        "pangocairo": "pango", "p7zip": "7zip", "poppler": "poppler", "clipboard": "xclip",
+        "pangocairo": "pango", "p7zip": "7zip", "poppler": "poppler", "clipboard": "xclip", "uv": "uv",
     },
     "dnf": {
         "python3": "python3", "nautilus-python": "nautilus-python", "gobject": "python3-gobject",
         "gtk4": "gtk4", "libadwaita": "libadwaita", "nautilus-extensions": "nautilus-extensions",
         "pillow": "python3-pillow", "pypdf": "python3-pypdf", "mutagen": "python3-mutagen",
         "cairo": "python3-cairo", "libarchive-c": "python3-libarchive-c",
-        "pangocairo": "pango", "p7zip": "7zip", "poppler": "poppler-utils", "clipboard": "xclip",
+        "pangocairo": "pango", "p7zip": "7zip", "poppler": "poppler-utils", "clipboard": "xclip", "uv": "uv",
     },
     "zypper": {
         "python3": "python3", "nautilus-python": "python3-nautilus", "gobject": "python3-gobject",
@@ -53,7 +54,7 @@ PACKAGES = {
         "pillow": "python3-Pillow", "pypdf": "python3-pypdf", "mutagen": "python3-mutagen",
         "cairo": "python3-cairo", "libarchive-c": "python3-libarchive-c",
         "pangocairo": "typelib-1_0-PangoCairo-1_0", "p7zip": "7zip",
-        "poppler": "poppler-tools", "clipboard": "xclip",
+        "poppler": "poppler-tools", "clipboard": "xclip", "uv": "uv",
     },
 }
 for row in PACKAGES.values():
@@ -88,6 +89,11 @@ def _python_check(code: str) -> bool:
 
 
 def available(key: str) -> bool:
+    if key == "remove-ai-watermarks":
+        return (
+            shutil.which("remove-ai-watermarks") is not None
+            or (Path.home() / ".local/bin/remove-ai-watermarks").is_file()
+        )
     if key == "python3":
         return shutil.which("python3") is not None
     if key == "clipboard":
@@ -106,6 +112,11 @@ def available(key: str) -> bool:
 
 
 def requirements(entry: dict, fm: str) -> list[str]:
+    if entry["id"] == "ai-watermarks":
+        keys = ["python3", "remove-ai-watermarks"]
+        if not available("remove-ai-watermarks"):
+            keys.insert(1, "uv")
+        return keys
     if fm == "nautilus":
         return list(dict.fromkeys(("python3", *BASE_NAUTILUS, *entry["dependencies"])))
     keys = ["python3"]
@@ -123,7 +134,8 @@ def dependency_plan(entry: dict, fm: str) -> dict:
     manager = package_manager()
     mapping = PACKAGES.get(manager, {})
     packages = list(dict.fromkeys(mapping[key] for key in missing if key in mapping))
-    unresolved = [key for key in missing if key not in mapping]
+    external_tools = ["remove-ai-watermarks[all] (uv tool, Python 3.12)"] if "remove-ai-watermarks" in missing else []
+    unresolved = [key for key in missing if key not in mapping and key != "remove-ai-watermarks"]
     return {
         "required": keys,
         "missing": missing,
@@ -131,32 +143,58 @@ def dependency_plan(entry: dict, fm: str) -> dict:
         "manager": manager,
         "packages": packages,
         "unresolved": unresolved,
+        "external_tools": external_tools,
+        "uv_tool": "remove-ai-watermarks[all]" if external_tools else None,
+        "uv_python": "3.12" if external_tools else None,
+        "network_download": bool(external_tools),
         "requires_admin": bool(packages) and os.geteuid() != 0,
     }
 
 
 def install_dependencies(plan: dict) -> None:
+    """Install only what was explicitly confirmed by the GUI.
+
+    Host packages use PolicyKit; third-party AI packages install per-user via
+    uv only, without piping remote shell scripts or overwriting existing tools.
+    """
+    if plan["unresolved"]:
+        raise RuntimeError("No package mapping for: " + ", ".join(plan["unresolved"]))
     packages = plan["packages"]
-    if not packages:
-        if plan["unresolved"]:
-            raise RuntimeError("No automatic package mapping for: " + ", ".join(plan["unresolved"]))
-        return
-    manager = plan["manager"]
-    commands = {
-        "apt": ["apt-get", "install", "-y"],
-        "dnf": ["dnf", "install", "-y"],
-        "pacman": ["pacman", "-S", "--needed", "--noconfirm"],
-        "zypper": ["zypper", "--non-interactive", "install"],
-    }
-    if manager not in commands:
-        raise RuntimeError("Unsupported distribution package manager.")
-    command = commands[manager] + packages
-    if os.geteuid() != 0:
-        pkexec = shutil.which("pkexec")
-        if not pkexec:
-            raise RuntimeError("Polkit (pkexec) is required to install system dependencies.")
-        command = [pkexec, *command]
-    subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+    if packages:
+        manager = plan["manager"]
+        commands = {
+            "apt": ["apt-get", "install", "-y"],
+            "dnf": ["dnf", "install", "-y"],
+            "pacman": ["pacman", "-S", "--needed", "--noconfirm"],
+            "zypper": ["zypper", "--non-interactive", "install"],
+        }
+        if manager not in commands:
+            raise RuntimeError("Unsupported distribution package manager.")
+        command = commands[manager] + packages
+        if os.geteuid() != 0:
+            pkexec = shutil.which("pkexec")
+            if not pkexec:
+                raise RuntimeError("Polkit (pkexec) is required to install system dependencies.")
+            command = [pkexec, *command]
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+    tool = plan.get("uv_tool")
+    if tool and not available("remove-ai-watermarks"):
+        uv = shutil.which("uv")
+        if not uv:
+            raise RuntimeError("uv is required for this optional add-on. Install uv first.")
+        # uv may fetch the specified Python runtime and models. Never force
+        # replace an already installed tool or run a remote script.
+        result = subprocess.run(
+            [uv, "tool", "install", "--python", plan["uv_python"], tool],
+            check=False, text=True, capture_output=True, timeout=1800,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                "The external tool could not be installed (uv exit "
+                f"{result.returncode}). Check uv logs and available disk space."
+            )
     remaining = [key for key in plan["missing"] if not available(key)]
     if remaining:
-        raise RuntimeError("Dependencies still missing after installation: " + ", ".join(remaining))
+        raise RuntimeError(
+            "Dependencies still missing after installation: " + ", ".join(remaining)
+        )
