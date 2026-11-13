@@ -1,0 +1,32 @@
+name: Universal backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'scripts/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'scripts/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python syntax
+        run: python3 -m compileall -q backend
+      - name: Test universal backend
+        run: python3 -m unittest discover -s backend/tests -p 'test_*.py' -v
+      - name: Check inventory JSON output
+        run: python3 backend/redclaw.py --json inventory | python3 -m json.tool > /dev/null
+      - name: Validate AppImage build script
+        run: bash -n scripts/build-appimage.sh
