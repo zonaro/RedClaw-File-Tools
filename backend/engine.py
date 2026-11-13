@@ -78,13 +78,24 @@ def detect_file_managers(catalog: dict, state: dict | None = None) -> list[dict]
     return result
 
 
-def _external_nautilus(entry: dict) -> bool:
-    items = entry["files"]
-    if not items:
-        return False
-    source = items[0]
-    filename = Path(source).name
-    return (adapters.data_home() / "nautilus-python/extensions" / filename).exists()
+def _legacy_plugin_paths(entry: dict) -> tuple[Path, Path]:
+    filename = Path(entry["files"][0]).name if entry.get("files") else ""
+    if not filename.endswith(".py"):
+        raise ValueError("No importable Nautilus plugin entry point.")
+    root = adapters.data_home() / "nautilus-python/extensions"
+    return root / filename, root / "disabled" / filename
+
+
+def _external_nautilus(entry: dict) -> str | None:
+    try:
+        active, inactive = _legacy_plugin_paths(entry)
+    except ValueError:
+        return None
+    if active.is_file() or active.is_symlink():
+        return "external"
+    if inactive.is_file() or inactive.is_symlink():
+        return "external_disabled"
+    return None
 
 
 def installed_status(entry: dict, fm: str, state: dict) -> str:
@@ -103,8 +114,10 @@ def installed_status(entry: dict, fm: str, state: dict) -> str:
             if name in disabled_files and Path(name).exists():
                 return "modified"
         return "disabled" if disabled else "installed"
-    if fm == "nautilus" and _external_nautilus(entry):
-        return "external"
+    if fm == "nautilus":
+        legacy = _external_nautilus(entry)
+        if legacy:
+            return legacy
     return "not_installed"
 
 def inventory() -> dict:
@@ -132,6 +145,8 @@ def inventory() -> dict:
         "product": catalog["product"], "schema_version": 1,
         "file_managers": fms, "extensions": entries,
         "managed_count": len(state["installed"]),
+        "legacy_manager_present": legacy_manager_path().is_file() or
+                                  legacy_manager_path().is_symlink(),
     }
 
 
@@ -255,6 +270,99 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
         raise
     return {"ok": True, "file_manager": fm, "slug": slug, "status": "installed",
             "files_installed": len(mapping), "dependencies": dep}
+
+
+def legacy_manager_path() -> Path:
+    """Legacy Nautilus context-menu module retired by the Flutter manager."""
+    return adapters.data_home() / "nautilus-python/extensions/extensions-manager.py"
+
+
+def retire_legacy_manager(*, confirmed: bool) -> dict:
+    """Conservatively detach and back up only the obsolete context-menu file."""
+    if not confirmed:
+        raise ValueError("Removal requires explicit --yes confirmation.")
+    paths = [legacy_manager_path(),
+             legacy_manager_path().parent / "disabled/extensions-manager.py"]
+    present = [p for p in paths if p.is_file() or p.is_symlink()]
+    if not present:
+        return {"ok": True, "status": "not_installed"}
+    if len(present) != 1:
+        raise RuntimeError("Multiple legacy manager copies found; manual review required.")
+    source = present[0]
+    backup = STATE.parent / "legacy-backups/extensions-manager.py"
+    if backup.exists():
+        raise RuntimeError("Existing legacy backup; manual review required.")
+    if source.is_symlink():
+        # Only the user's link is unlinked. System package files stay untouched.
+        source.unlink()
+        return {"ok": True, "status": "removed", "backup": None,
+                "symlink_only": True}
+    content = source.read_bytes()
+    _atomic_write(backup, content, source.stat().st_mode & 0o777)
+    try:
+        source.unlink()
+    except Exception:
+        backup.unlink(missing_ok=True)
+        raise
+    return {"ok": True, "status": "removed", "backup": str(backup)}
+
+
+def adopt_legacy(fm: str, slug: str, *, confirmed: bool) -> dict:
+    """Explicitly take ownership of ONLY an existing Nautilus plugin entrypoint.
+
+    Shared dependencies and helper modules are intentionally never adopted.
+    """
+    if not confirmed:
+        raise ValueError("Import requires explicit --yes confirmation.")
+    if fm != "nautilus":
+        raise ValueError("Assisted legacy import currently supports Nautilus only.")
+    catalog = read_catalog()
+    entry = get_entry(catalog, slug)
+    if entry is None:
+        raise ValueError("Unknown extension: " + slug)
+    state = _load_state()
+    key = _key(fm, slug)
+    if key in state["installed"]:
+        raise RuntimeError("Extension is already managed.")
+    active, inactive = _legacy_plugin_paths(entry)
+    sources = [p for p in (active, inactive) if p.is_file() or p.is_symlink()]
+    if len(sources) != 1:
+        raise RuntimeError("Expected one existing Nautilus plugin file.")
+    source = sources[0]
+    if source.is_symlink() or not source.is_file():
+        raise RuntimeError("Symlink-managed system packages cannot be adopted safely.")
+    if _other_owner(state, str(active), key):
+        raise RuntimeError("This plugin file is already used by another extension.")
+    disabled = source == inactive
+    contents = source.read_bytes()
+    mode = source.stat().st_mode & 0o777
+    record = {"file_manager": fm, "slug": slug, "enabled": not disabled,
+              "legacy_adopted": True,
+              "files": {str(active): _sha(contents)},
+              "modes": {str(active): mode}}
+    archived = _disabled_path(fm, slug, str(active))
+    if disabled:
+        if archived.exists() or active.exists():
+            raise RuntimeError("Destination is occupied; refusing to migrate.")
+        _atomic_write(archived, contents, mode)
+        record["disabled_files"] = {str(active): str(archived)}
+        try:
+            source.unlink()
+        except Exception:
+            archived.unlink(missing_ok=True)
+            raise
+    try:
+        state["installed"][key] = record
+        _save_state(state)
+    except Exception:
+        if disabled:
+            _atomic_write(source, contents, mode)
+            archived.unlink(missing_ok=True)
+        raise
+    return {"ok": True, "file_manager": fm, "slug": slug,
+            "status": "disabled" if disabled else "installed",
+            "managed_entrypoints": 1,
+            "shared_helpers_preserved": True}
 
 
 def _disabled_path(fm: str, slug: str, name: str) -> Path:
