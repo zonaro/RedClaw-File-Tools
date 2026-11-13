@@ -403,6 +403,7 @@ class _ManagerHomeState extends State<ManagerHome> {
     final status = compatibility['status']?.toString() ?? 'not_installed';
     final recommendation = compatibility['recommendation']?.toString() ?? 'incompatible';
     final isInstalled = status == 'installed';
+    final legacyAdopted = compatibility['legacy_adopted'] == true;
     final isDisabled = status == 'disabled';
     final isManaged = isInstalled || isDisabled;
     final canManage = support != 'unsupported' && status != 'external' &&
@@ -459,10 +460,16 @@ class _ManagerHomeState extends State<ManagerHome> {
               label: Text(t('legacy_import')),
             ),
           ],
+          if (legacyAdopted)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(t('legacy_adopted_desc'),
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
           if (canManage) ...[
             const SizedBox(height: 12),
             Wrap(spacing: 8, children: [
-              if (!isDisabled)
+              if (!isDisabled && !(isInstalled && legacyAdopted))
                 FilledButton.tonalIcon(
                   onPressed: busy == null ? () => _change(entry, remove: false) : null,
                   icon: busyHere
