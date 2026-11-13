@@ -20,6 +20,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list")
     sub.add_parser("doctor")
     sub.add_parser("version")
+    language_command = sub.add_parser("language")
+    language_command.add_argument("--set", default=None)
     legacy_remove = sub.add_parser("retire-legacy-manager")
     legacy_remove.add_argument("--yes", action="store_true")
     for cmd in ("plan", "install", "uninstall", "enable", "disable", "adopt"):
@@ -54,6 +56,10 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "version":
             data = {"product": "RedClaw File Tools",
                     "version": os.environ.get("REDCLAW_VERSION", "development")}
+        elif args.command == "language":
+            data = engine.set_extension_language(args.set) if args.set is not None else {
+                "language": engine.extension_language()
+            }
         elif args.command == "plan":
             data = engine.plan(args.fm, args.slug)
         elif args.command == "install":
