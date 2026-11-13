@@ -169,6 +169,10 @@ ACTIONS = {
 
 
 def run(slug: str, action: str, paths: list[str]) -> list[str]:
+    if slug == "ai-watermarks":
+        # Lazy import: the optional third-party engine is never a base dependency.
+        from ai_watermarks import run as run_ai_watermarks
+        return run_ai_watermarks(action, paths)
     handler = ACTIONS.get((slug, action))
     if handler is None:
         raise ActionError(f"Unsupported action: {slug}/{action}")
