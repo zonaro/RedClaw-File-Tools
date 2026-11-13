@@ -2320,11 +2320,19 @@ class _Editor:
 
     # -- construction -----------------------------------------------------
     def _build(self):
+        """Three-pane image-editor workspace: tools | canvas | layers.
+
+        Paned handles are draggable independently. Small windows reorient both
+        Paned widgets vertically instead of hiding controls or rebuilding
+        widgets (which would discard editing state).
+        """
         dialog = Gtk.Dialog(title=self.title)
         dialog.set_modal(True)
+        dialog.set_resizable(True)
         try:
             avail_w, avail_h = _screen_available_size()
-            size_w, size_h = _clamp_dialog_size(avail_w, avail_h)
+            size_w, size_h = _clamp_dialog_size(
+                avail_w, avail_h, base_w=1160, base_h=820)
             dialog.set_default_size(size_w, size_h)
         except Exception as e:
             log.error(f"dialog size: {e}")
@@ -2336,77 +2344,99 @@ class _Editor:
             pass
         self.dialog = dialog
         dialog.connect("destroy", self._on_dialog_destroy)
-
         self._apply_css()
 
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        for margin in ("margin_top", "margin_bottom", "margin_start",
-                       "margin_end"):
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        for margin in ("margin_top", "margin_bottom", "margin_start", "margin_end"):
             try:
-                getattr(root, "set_" + margin)(12)
+                getattr(root, "set_" + margin)(10)
             except Exception:
                 pass
-        # On screens smaller than the dialog's natural size the content would
-        # otherwise be clipped out of view with no way to reach it; a scrolled
-        # window (natural size preserved) reveals it via a scrollbar instead.
-        scroller = Gtk.ScrolledWindow()
-        try:
-            # AUTOMATIC/AUTOMATIC with propagate_natural_width=False lets the
-            # scroller constrain children to the allocated width so content
-            # reflows instead of being masked by overflow (responsiveness).
-            scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-            scroller.set_propagate_natural_height(True)
-            scroller.set_propagate_natural_width(False)
-            scroller.set_vexpand(True)
-        except Exception as e:
-            log.debug(f"dialog scroller: {e}")
-        scroller.set_child(root)
-        dialog.get_content_area().append(scroller)
 
-        upper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        upper.set_hexpand(True)
-        upper.set_halign(Gtk.Align.FILL)
-        self.upper = upper
+        # Page-level scrolling is a fallback for very small windows; each
+        # editor sidebar also has its own vertical scrolling region.
+        page_scroller = Gtk.ScrolledWindow()
+        page_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        page_scroller.set_propagate_natural_width(False)
+        page_scroller.set_propagate_natural_height(True)
+        page_scroller.set_vexpand(True)
+        page_scroller.set_child(root)
+        dialog.get_content_area().append(page_scroller)
+        self.workspace_scroller = page_scroller
+
         if self.global_host is not None:
             root.append(self._build_scope_tabs())
-        root.append(upper)
-        preview_column = self._build_preview_column()
-        # The preview keeps its natural size and never steals space from the
-        # layers column; on very narrow screens the whole upper area stacks
-        # vertically via _apply_responsive_layout().
-        preview_column.set_hexpand(False)
-        preview_column.set_halign(Gtk.Align.CENTER)
-        upper.append(preview_column)
-        self.preview_column = preview_column
-        layers_column = self._build_layers_column()
-        layers_column.set_hexpand(True)
-        upper.append(layers_column)
-        self.layers_column = layers_column
-        # Responsive layout: stack the preview above the layers on narrow
-        # screens so nothing is hidden behind a scrollbar. Seeded from the
-        # screen size and kept in sync via a frame-clock tick callback with
-        # clean lifecycle (armed on map, disarmed on unmap/destroy,
-        # self-removes after 3 stable frames — never a busy idle spin).
-        self._apply_responsive_layout(_screen_available_size()[0])
-        self._install_resize_controller(dialog)
 
-        root.append(Gtk.Separator())
-        root.append(self._build_colour_rows())
-        # Advanced mode toggle: always available and persisted across sessions,
-        # independently of the Global tab (#38).
-        root.append(self._build_advanced_toggle())
-        # Folder theme / accent follow are always available (Folder scope);
-        # the Global tab (theme list, restore) is added when a host exists.
-        root.append(self._build_scope_options())
-        # Editor preferences: default drop behaviour + default clip (#35/#38).
-        # Real settings that change what happens to imported images, persisted
-        # in editor.conf, never a decorative switch.
-        root.append(self._build_preferences())
-        root.append(Gtk.Separator())
-        root.append(self._bold_label(self.tr("Layer settings")))
-        self.settings_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                                    spacing=6)
-        root.append(self.settings_box)
+        # LEFT: independently scrollable palette, tools and layer properties.
+        tools_body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        tools_body.set_margin_start(8)
+        tools_body.set_margin_end(8)
+        tools_body.set_margin_top(8)
+        tools_body.set_margin_bottom(8)
+        tools_body.append(self._bold_label(self.tr("Tools")))
+        tools_body.append(self._build_colour_rows())
+        tools_body.append(Gtk.Separator())
+        tools_body.append(self._build_advanced_toggle())
+        tools_body.append(self._build_scope_options())
+        tools_body.append(self._build_preferences())
+        tools_body.append(Gtk.Separator())
+        tools_body.append(self._bold_label(self.tr("Layer settings")))
+        self.settings_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        tools_body.append(self.settings_box)
+        self.tools_column = Gtk.ScrolledWindow()
+        self.tools_column.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.tools_column.set_min_content_width(210)
+        self.tools_column.set_min_content_height(350)
+        self.tools_column.set_vexpand(True)
+        self.tools_column.set_child(tools_body)
+        self.tools_column.add_css_class("editor-tools-panel")
+
+        # CENTER: live icon canvas, with existing drag, zoom and drop handlers.
+        self.preview_column = self._build_preview_column()
+        self.preview_column.set_hexpand(True)
+        self.preview_column.set_halign(Gtk.Align.FILL)
+        self.preview_column.set_vexpand(True)
+        self.preview_column.add_css_class("editor-canvas-panel")
+
+        # RIGHT: real layer stack and composition actions.
+        self.layers_column = self._build_layers_column()
+        self.layers_column.set_hexpand(False)
+        self.layers_column.set_vexpand(True)
+        self.layers_column.add_css_class("editor-layers-panel")
+        self.layers_column.set_margin_start(8)
+        self.layers_column.set_margin_end(8)
+        self.layers_column.set_margin_top(8)
+        self.layers_column.set_margin_bottom(8)
+
+        self.right_split = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
+        self.right_split.set_wide_handle(True)
+        self.right_split.set_start_child(self.preview_column)
+        self.right_split.set_end_child(self.layers_column)
+        self.right_split.set_resize_start_child(True)
+        self.right_split.set_resize_end_child(False)
+        self.right_split.set_shrink_start_child(True)
+        self.right_split.set_shrink_end_child(True)
+
+        self.main_split = Gtk.Paned.new(Gtk.Orientation.HORIZONTAL)
+        self.main_split.set_wide_handle(True)
+        self.main_split.set_start_child(self.tools_column)
+        self.main_split.set_end_child(self.right_split)
+        self.main_split.set_resize_start_child(False)
+        self.main_split.set_resize_end_child(True)
+        self.main_split.set_shrink_start_child(True)
+        self.main_split.set_shrink_end_child(True)
+
+        upper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        upper.set_hexpand(True)
+        upper.set_vexpand(True)
+        upper.append(self.main_split)
+        self.upper = upper
+        root.append(upper)
+        self._layout_narrow = None
+        self._apply_responsive_layout(size_w if 'size_w' in locals()
+                                      else _screen_available_size()[0])
+        self._install_resize_controller(dialog)
 
         dialog.connect("response", self._on_response)
         self._install_paste_shortcut(dialog)
@@ -2414,35 +2444,34 @@ class _Editor:
         self._rebuild_rows()
 
     # -- responsive layout --------------------------------------------------
-    _RESPONSIVE_THRESHOLD = 720  # below this, preview stacks above layers
+    _RESPONSIVE_THRESHOLD = 790
 
     def _apply_responsive_layout(self, width):
-        """Stack preview above layers on narrow screens; side-by-side above.
+        """Switch draggable horizontal panes to vertical panes in narrow views.
 
-        Safe to call from tests with an arbitrary width.
+        Widget objects and their associated editing state never get recreated;
+        only Paned orientations/positions change on a breakpoint transition.
         """
         try:
             width = int(width)
         except Exception:
             width = self._RESPONSIVE_THRESHOLD
         narrow = width < self._RESPONSIVE_THRESHOLD
+        if narrow == getattr(self, "_layout_narrow", None):
+            return
+        self._layout_narrow = narrow
+        orientation = (Gtk.Orientation.VERTICAL if narrow
+                       else Gtk.Orientation.HORIZONTAL)
+        self.upper.set_orientation(orientation)
+        self.main_split.set_orientation(orientation)
+        self.right_split.set_orientation(orientation)
         if narrow:
-            self.upper.set_orientation(Gtk.Orientation.VERTICAL)
-            self.upper.set_spacing(8)
-            for column in (self.preview_column, self.layers_column):
-                column.set_hexpand(True)
-                column.set_halign(Gtk.Align.FILL)
+            self.main_split.set_position(340)
+            self.right_split.set_position(340)
         else:
-            self.upper.set_orientation(Gtk.Orientation.HORIZONTAL)
-            self.upper.set_spacing(12)
-            self.preview_column.set_hexpand(False)
-            self.preview_column.set_halign(Gtk.Align.CENTER)
-            self.layers_column.set_hexpand(True)
-            self.layers_column.set_halign(Gtk.Align.FILL)
-        try:
-            self.upper.queue_resize()
-        except Exception:
-            pass
+            self.main_split.set_position(270)
+            self.right_split.set_position(max(260, width - 270 - 290))
+        self.upper.queue_resize()
 
     def _install_resize_controller(self, dialog):
         """Responsive layout follows the dialog's real allocated width.
@@ -2927,7 +2956,9 @@ class _Editor:
         scoped by the unique id prefix, so peers are unaffected.
         """
         rules = [
-            ".preview-frame { border: 1px solid alpha(#999999, 0.5); border-radius: 6px; }",
+            ".preview-frame { border: 1px solid alpha(#999999, 0.5); border-radius: 10px; }",
+            ".editor-tools-panel, .editor-layers-panel { background-color: alpha(#808080, 0.06); border-radius: 9px; }",
+            ".editor-canvas-panel { background-color: alpha(#808080, 0.10); border-radius: 10px; padding: 14px; }",
             ".color-button { border: 1px solid alpha(#999999, 0.7); border-radius: 4px; padding: 2px; }",
             # The theme pads every flowbox child by 3px; action rows must keep
             # the tight spacing of a plain box.
@@ -3281,8 +3312,8 @@ class _Editor:
         scrolled = Gtk.ScrolledWindow()
         try:
             scrolled.set_min_content_height(170)
-            scrolled.set_max_content_height(250)
             scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            scrolled.set_vexpand(True)
         except Exception as e:
             log.error(f"layers scroller: {e}")
         self.listbox = Gtk.ListBox()
