@@ -617,6 +617,8 @@ def test_responsive_resize_same_dialog_across_sizes():
 @_gui_skip
 def test_color_chooser_uses_choose_rgba_not_open_set_rgba():
     """The GTK4 color chooser uses choose_rgba/finish (no removed open/set_rgba)."""
+    if not hasattr(Gtk, "ColorDialog"):
+        pytest.skip("GTK < 4.10 lacks ColorDialog; tested on supported newer desktops")
     assert hasattr(Gtk.ColorDialog, "choose_rgba")
     assert hasattr(Gtk.ColorDialog, "choose_rgba_finish")
     recorded = []
