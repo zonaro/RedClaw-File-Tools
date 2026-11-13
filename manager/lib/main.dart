@@ -421,82 +421,152 @@ class _ManagerHomeState extends State<ManagerHome> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(t('subtitle'), style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 14),
-                if (error != null) Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: SelectableText('${t('error')}: $error'),
-                  ),
-                ),
-                if (loading) const LinearProgressIndicator(),
-                if (!loading && fms.isEmpty) Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Center(child: Text(t('no_managers'))),
-                ),
-                if (fms.isNotEmpty) ...[
-                  Text(t('select_manager'),
-                      style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(children: fms.map((fm) {
-                      final id = fm['id'] as String;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          selected: currentManager == id,
-                          avatar: Icon(_managerIcon(id), size: 18),
-                          label: Text('${fm['name']}${fm['detected'] == true ? '' : ' · ${t('not_detected')}'}'),
-                          onSelected: (_) => setState(() => currentManager = id),
-                        ),
-                      );
-                    }).toList()),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    SizedBox(
-                      width: 320,
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: t('search'), prefixIcon: const Icon(Icons.search),
-                          isDense: true, border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (value) => setState(() => search = value),
-                      ),
-                    ),
-                    for (final item in ['all', 'recommended', 'installed'])
-                      ChoiceChip(
-                        label: Text(t(item == 'all' ? 'all'
-                            : item == 'recommended' ? 'only_recommended' : 'only_installed')),
-                        selected: filter == item,
-                        onSelected: (_) => setState(() => filter = item),
-                      ),
-                  ]),
-                  const SizedBox(height: 12),
-                ],
-                if (fms.isNotEmpty)
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? Center(child: Text(t('no_results')))
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) => _extensionCard(filtered[index]),
+        child: LayoutBuilder(
+          builder: (context, viewport) {
+            // Make the entire page scroll. A fixed Column + Expanded caused
+            // controls to overflow or become unreachable in short windows.
+            final contentWidth = viewport.maxWidth > 1100
+                ? 1100.0 : viewport.maxWidth;
+            final searchWidth = contentWidth < 390
+                ? (contentWidth - 36).clamp(160.0, 320.0)
+                : 320.0;
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: contentWidth,
+                height: viewport.maxHeight,
+                child: Scrollbar(
+                  child: CustomScrollView(
+                    primary: true,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(t('subtitle'),
+                                  style: Theme.of(context).textTheme.titleMedium),
+                              const SizedBox(height: 14),
+                              if (error != null) ...[
+                                Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: SelectableText(
+                                        '${t('error')}: $error'),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (loading) ...[
+                                const LinearProgressIndicator(),
+                                const SizedBox(height: 12),
+                              ],
+                              if (!loading && fms.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 32),
+                                  child: Center(child: Text(t('no_managers'))),
+                                ),
+                              if (fms.isNotEmpty) ...[
+                                Text(t('select_manager'),
+                                    style: Theme.of(context).textTheme.labelLarge),
+                                const SizedBox(height: 8),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(children: fms.map((fm) {
+                                    final id = fm['id'] as String;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: ChoiceChip(
+                                        selected: currentManager == id,
+                                        avatar: Icon(_managerIcon(id), size: 18),
+                                        label: Text(
+                                          '${fm['name']}${fm['detected'] == true ? '' : ' · ${t('not_detected')}'}',
+                                        ),
+                                        onSelected: (_) => setState(
+                                            () => currentManager = id),
+                                      ),
+                                    );
+                                  }).toList()),
+                                ),
+                                const SizedBox(height: 16),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment:
+                                      WrapCrossAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: searchWidth,
+                                      child: TextField(
+                                        decoration: InputDecoration(
+                                          hintText: t('search'),
+                                          prefixIcon: const Icon(Icons.search),
+                                          isDense: true,
+                                          border: const OutlineInputBorder(),
+                                        ),
+                                        onChanged: (value) =>
+                                            setState(() => search = value),
+                                      ),
+                                    ),
+                                    for (final item in [
+                                      'all', 'recommended', 'installed',
+                                    ])
+                                      ChoiceChip(
+                                        label: Text(t(item == 'all'
+                                            ? 'all'
+                                            : item == 'recommended'
+                                                ? 'only_recommended'
+                                                : 'only_installed')),
+                                        selected: filter == item,
+                                        onSelected: (_) =>
+                                            setState(() => filter = item),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
                           ),
+                        ),
+                      ),
+                      if (fms.isNotEmpty && filtered.isEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 28),
+                          sliver: SliverToBoxAdapter(
+                            child: Center(child: Text(t('no_results'))),
+                          ),
+                        ),
+                      if (fms.isNotEmpty && filtered.isNotEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _extensionCard(filtered[index]),
+                              childCount: filtered.length,
+                            ),
+                          ),
+                        ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+                        sliver: SliverToBoxAdapter(
+                          child: Text(
+                            '${t('version')}: $appVersion  ·  ${t('runtime_note')}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 8),
-                Text('${t('version')}: $appVersion  ·  ${t('runtime_note')}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center),
-              ]),
-            ),
-          ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
