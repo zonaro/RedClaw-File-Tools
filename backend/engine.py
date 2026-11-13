@@ -161,7 +161,7 @@ def _runtime_sources() -> dict[Path, tuple[bytes, int]]:
     backend = Path(__file__).resolve().parent
     return {
         RUNTIME / name: ((backend / name).read_bytes(), 0o644)
-        for name in ("redclaw.py", "engine.py", "adapters.py", "dependencies.py", "portable.py", "catalog.json")
+        for name in ("redclaw.py", "engine.py", "adapters.py", "dependencies.py", "portable.py", "ai_watermarks.py", "catalog.json")
     }
 
 
@@ -213,7 +213,7 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
     # Stage and atomically replace per-user files; restore previous files on error.
     changed: dict[Path, tuple[bytes | None, int]] = {}
     try:
-        if fm != "nautilus":
+        if fm != "nautilus" or slug == "ai-watermarks":
             for dest, (content, mode) in _runtime_sources().items():
                 _atomic_write(dest, content, mode)
         for dest, (content, mode) in mapping.items():
