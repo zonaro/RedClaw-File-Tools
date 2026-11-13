@@ -5,9 +5,9 @@ Maintainer: Kaizonaro <zonaro@outlook.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
-Homepage: https://github.com/zonaro/Nautilus-Extensions
-Vcs-Browser: https://github.com/zonaro/Nautilus-Extensions
-Vcs-Git: https://github.com/zonaro/Nautilus-Extensions.git
+Homepage: https://github.com/zonaro/RedClaw-File-Tools
+Vcs-Browser: https://github.com/zonaro/RedClaw-File-Tools
+Vcs-Git: https://github.com/zonaro/RedClaw-File-Tools.git
 
 Package: zonaro-nautilus-common
 Architecture: all
@@ -18,8 +18,8 @@ Description: shared infrastructure for the zonaro Nautilus extensions
  entry that links every installed extension into
  ~/.local/share/nautilus-python/extensions at session start.
  .
- Extensions disabled through the Extensions Manager (moved to the disabled/
- subfolder) are left untouched, so a user's choice survives across logins.
+ Extensions can be managed individually through the RedClaw File Tools
+ Flutter application without removing user preferences or shared helpers.
 
 Package: zonaro-nautilus-archive-browser
 Architecture: all
@@ -96,14 +96,6 @@ Depends: ${misc:Depends}, python3, python3-nautilus, python3-gi, gir1.2-gtk-4.0,
 Description: duration column for audio/video files in Nautilus
  Adds a sortable HH:MM:SS Duration column for audio and video files, using
  ffprobe.
-
-Package: zonaro-nautilus-extensions-manager
-Architecture: all
-Depends: ${misc:Depends}, python3, python3-nautilus, python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-nautilus-4.0, zonaro-nautilus-common
-Description: enable or disable zonaro Nautilus extensions
- A central hub listing every installed extension (active and disabled) with
- one-click enable/disable toggles and a Restart Nautilus button. Disabled
- extensions stay disabled across logins thanks to the common linker.
 
 Package: zonaro-nautilus-extract-here
 Architecture: all
