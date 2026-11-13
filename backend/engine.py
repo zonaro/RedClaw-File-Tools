@@ -257,6 +257,97 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
             "files_installed": len(mapping), "dependencies": dep}
 
 
+def _disabled_path(fm: str, slug: str, name: str) -> Path:
+    """Private state path outside file-manager extension discovery directories."""
+    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()
+    return STATE.parent / "disabled" / fm / slug / digest
+
+
+def _entrypoints(fm: str, entry: dict, record: dict) -> list[str]:
+    """Never disable shared Nautilus support modules with the plugin itself."""
+    names = list(record.get("files", {}))
+    if fm == "nautilus" and entry["id"] != "ai-watermarks":
+        main_file = Path(entry["files"][0]).name if entry["files"] else ""
+        selected = [name for name in names
+                    if Path(name).name == main_file and main_file.endswith(".py")]
+        if not selected:
+            raise RuntimeError("No safe Nautilus entry point to disable.")
+        return selected
+    return names
+
+
+def set_enabled(fm: str, slug: str, *, enabled: bool, confirmed: bool) -> dict:
+    """Enable or disable a single managed integration without losing settings."""
+    if not confirmed:
+        raise ValueError("Changing extension state requires explicit --yes confirmation.")
+    state = _load_state()
+    key = _key(fm, slug)
+    record = state["installed"].get(key)
+    if record is None:
+        raise ValueError("No managed installation found for " + key)
+    entry = get_entry(read_catalog(), slug)
+    if entry is None:
+        raise ValueError("Unknown extension: " + slug)
+    status = installed_status(entry, fm, state)
+    if status == "modified":
+        raise RuntimeError("Managed files were modified. Refusing to toggle.")
+    if status == ("installed" if enabled else "disabled"):
+        return {"ok": True, "file_manager": fm, "slug": slug, "status": status}
+    mapping = _entrypoints(fm, entry, record)
+    modes = record.get("modes", {})
+    original_uca = (
+        adapters.thunar_file().read_bytes()
+        if fm == "thunar" and adapters.thunar_file().is_file() else None
+    )
+    changed = []
+    try:
+        if fm == "thunar":
+            adapters.thunar_change(entry, enabled)
+        else:
+            for name in mapping:
+                original = Path(name)
+                stored = _disabled_path(fm, slug, name)
+                if enabled:
+                    if original.exists():
+                        raise RuntimeError("Target already occupied: " + name)
+                    if not stored.is_file() or _sha(stored.read_bytes()) != record["files"][name]:
+                        raise RuntimeError("Disabled copy was modified: " + name)
+                    content = stored.read_bytes()
+                    mode = int(modes.get(name, 0o644))
+                    _atomic_write(original, content, mode)
+                    stored.unlink()
+                    changed.append((stored, original, content, mode))
+                else:
+                    if stored.exists():
+                        raise RuntimeError("Disabled storage already occupied: " + str(stored))
+                    if not original.is_file() or _sha(original.read_bytes()) != record["files"][name]:
+                        raise RuntimeError("Managed file was modified: " + name)
+                    content = original.read_bytes()
+                    mode = original.stat().st_mode & 0o777
+                    _atomic_write(stored, content, mode)
+                    original.unlink()
+                    changed.append((original, stored, content, mode))
+                    modes[name] = mode
+        record["enabled"] = enabled
+        record["modes"] = modes
+        record["disabled_files"] = {} if enabled else {
+            name: str(_disabled_path(fm, slug, name)) for name in mapping
+        }
+        _save_state(state)
+    except Exception:
+        for source, destination, content, mode in reversed(changed):
+            _atomic_write(source, content, mode)
+            destination.unlink(missing_ok=True)
+        if fm == "thunar":
+            if original_uca is None:
+                adapters.thunar_file().unlink(missing_ok=True)
+            else:
+                _atomic_write(adapters.thunar_file(), original_uca)
+        raise
+    return {"ok": True, "file_manager": fm, "slug": slug,
+            "status": "installed" if enabled else "disabled"}
+
+
 def uninstall(fm: str, slug: str, *, confirmed: bool) -> dict:
     if not confirmed:
         raise ValueError("Uninstallation requires explicit --yes confirmation.")
@@ -266,15 +357,17 @@ def uninstall(fm: str, slug: str, *, confirmed: bool) -> dict:
         raise ValueError("No managed installation found for " + key)
     entry = get_entry(read_catalog(), slug)
     record = state["installed"][key]
-    for name, expected_digest in record.get("files", {}).items():
-        target = Path(name)
-        if target.exists() and _sha(target.read_bytes()) != expected_digest:
-            raise RuntimeError("File modified since installation: " + name)
-    if fm == "thunar":
+    if installed_status(entry, fm, state) == "modified":
+        raise RuntimeError("Installed extension was modified; refusing to remove it.")
+    if fm == "thunar" and record.get("enabled", True):
         adapters.thunar_change(entry, False)
     removed = []
+    disabled_files = record.get("disabled_files", {})
     for name in record.get("files", {}):
-        if not _other_owner(state, name, key):
+        if name in disabled_files:
+            Path(disabled_files[name]).unlink(missing_ok=True)
+            removed.append(name)
+        elif not _other_owner(state, name, key):
             Path(name).unlink(missing_ok=True)
             removed.append(name)
     del state["installed"][key]
