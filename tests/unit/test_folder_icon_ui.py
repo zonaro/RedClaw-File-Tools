@@ -203,6 +203,46 @@ class TestPreferences(unittest.TestCase):
         self.assertTrue(fie.load_advanced_mode())
         self.assertEqual(fie.get_preference("default_clip"), "auto")
 
+    def test_pane_preferences_are_bounded(self):
+        self.assertEqual(fie._Editor._pane_preference(
+            "editor_tools_width", 270), 270)
+        fie.set_preference("editor_tools_width", 352)
+        self.assertEqual(fie._Editor._pane_preference(
+            "editor_tools_width", 270), 352)
+        fie.set_preference("editor_tools_width", "garbage")
+        self.assertEqual(fie._Editor._pane_preference(
+            "editor_tools_width", 270), 270)
+        fie.set_preference("editor_tools_width", "99999")
+        self.assertEqual(fie._Editor._pane_preference(
+            "editor_tools_width", 270), 270)
+
+    def test_editor_splitter_sizes_persist_without_overwriting_other_settings(self):
+        class FakePane:
+            def __init__(self, position):
+                self.position = position
+
+            def get_position(self):
+                return self.position
+
+        editor = fie._Editor.__new__(fie._Editor)
+        editor._split_positions = {"wide": [270, 590], "narrow": [340, 340]}
+        editor._layout_narrow = False
+        editor.main_split = FakePane(320)
+        editor.right_split = FakePane(465)
+        fie.set_preference("default_clip", "auto")
+        editor._save_wide_split_positions()
+        self.assertEqual(fie.get_preference("editor_tools_width"), "320")
+        self.assertEqual(fie.get_preference("editor_canvas_width"), "465")
+        self.assertEqual(fie.get_preference("default_clip"), "auto")
+        # Closing the editor while the responsive panels are vertical must
+        # restore previous wide-panel preferences, not overwrite them.
+        editor._layout_narrow = True
+        editor.main_split.position = 300
+        editor.right_split.position = 200
+        editor._save_wide_split_positions()
+        self.assertEqual(fie.get_preference("editor_tools_width"), "320")
+        self.assertEqual(fie.get_preference("editor_canvas_width"), "465")
+
     def test_save_advanced_preserves_other_keys(self):
         fie.set_preference("default_clip", "auto")
         fie.save_advanced_mode(True)
