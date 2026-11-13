@@ -46,7 +46,8 @@ class BackendTests(unittest.TestCase):
 
     def test_catalog_all_extensions(self):
         catalog = engine.read_catalog()
-        self.assertEqual(len(catalog["extensions"]), 31)
+        self.assertEqual(len(catalog["extensions"]), 30)
+        self.assertNotIn("extensions-manager", [e["id"] for e in catalog["extensions"]])
         self.assertIn("dolphin", [fm["id"] for fm in catalog["file_managers"]])
         for entry in catalog["extensions"]:
             self.assertEqual(len(entry["compatibility"]), 6)
@@ -68,6 +69,79 @@ class BackendTests(unittest.TestCase):
         self.assertFalse(file_a.exists())
         self.assertTrue(file_b.exists())
         self.assertIn("nemo/file-tools", engine._load_state()["installed"])
+
+    def test_dolphin_toggle_does_not_affect_nemo(self):
+        with patch.object(engine, "plan", side_effect=self.plan_result):
+            engine.install("dolphin", "file-tools", install_deps=False, confirmed=True)
+            engine.install("nemo", "file-tools", install_deps=False, confirmed=True)
+        entry = engine.get_entry(engine.read_catalog(), "file-tools")
+        self.assertEqual(engine.installed_status(entry, "dolphin", engine._load_state()), "installed")
+        result = engine.set_enabled("dolphin", "file-tools", enabled=False, confirmed=True)
+        self.assertEqual(result["status"], "disabled")
+        self.assertEqual(engine.installed_status(entry, "dolphin", engine._load_state()), "disabled")
+        self.assertEqual(engine.installed_status(entry, "nemo", engine._load_state()), "installed")
+        desktop = self.root / "data/kio/servicemenus/redclaw-file-tools-file-tools-sha256.desktop"
+        self.assertFalse(desktop.exists())
+        self.assertTrue((self.root / "data/nemo/actions/redclaw-file-tools-file-tools-sha256.nemo_action").exists())
+        result = engine.set_enabled("dolphin", "file-tools", enabled=True, confirmed=True)
+        self.assertEqual(result["status"], "installed")
+        self.assertTrue(desktop.exists())
+        self.assertEqual(engine.installed_status(entry, "dolphin", engine._load_state()), "installed")
+
+    def test_uninstall_disabled_keeps_other_managers(self):
+        with patch.object(engine, "plan", side_effect=self.plan_result):
+            engine.install("dolphin", "file-tools", install_deps=False, confirmed=True)
+            engine.install("nemo", "file-tools", install_deps=False, confirmed=True)
+        engine.set_enabled("dolphin", "file-tools", enabled=False, confirmed=True)
+        engine.uninstall("dolphin", "file-tools", confirmed=True)
+        state = engine._load_state()
+        self.assertNotIn("dolphin/file-tools", state["installed"])
+        self.assertIn("nemo/file-tools", state["installed"])
+        self.assertFalse(list((self.root / "state").rglob("disabled/dolphin/file-tools/*")))
+
+    def test_nautilus_disable_only_entrypoint_and_preserve_helpers(self):
+        with patch.object(engine, "plan", side_effect=self.plan_result):
+            engine.install("nautilus", "file-tools", install_deps=False, confirmed=True)
+        ext_dir = self.root / "data/nautilus-python/extensions"
+        plugin = ext_dir / "file-tools.py"
+        helper = ext_dir / "nautilus_i18n.py"
+        self.assertTrue(plugin.exists())
+        self.assertTrue(helper.exists())
+        engine.set_enabled("nautilus", "file-tools", enabled=False, confirmed=True)
+        self.assertFalse(plugin.exists())
+        self.assertTrue(helper.exists())
+        engine.set_enabled("nautilus", "file-tools", enabled=True, confirmed=True)
+        self.assertTrue(plugin.exists())
+
+    def test_thunar_enable_disable_keeps_user_custom_actions(self):
+        entry = engine.get_entry(engine.read_catalog(), "file-tools")
+        thunar = adapters.thunar_file()
+        thunar.parent.mkdir(parents=True, exist_ok=True)
+        thunar.write_text(
+            '<actions><action><unique-id>keep-me</unique-id><name>Personal</name>'
+            '</action></actions>', encoding="utf-8")
+        with patch.object(engine, "plan", side_effect=self.plan_result):
+            engine.install("thunar", "file-tools", install_deps=False, confirmed=True)
+        self.assertTrue(adapters.thunar_has(entry))
+        engine.set_enabled("thunar", "file-tools", enabled=False, confirmed=True)
+        self.assertFalse(adapters.thunar_has(entry))
+        state = engine._load_state()
+        self.assertEqual(engine.installed_status(entry, "thunar", state), "disabled")
+        engine.set_enabled("thunar", "file-tools", enabled=True, confirmed=True)
+        self.assertTrue(adapters.thunar_has(entry))
+        ids = [el.findtext("unique-id") for el in ET.parse(thunar).getroot().findall("action")]
+        self.assertIn("keep-me", ids)
+
+    def test_reject_toggle_when_unmanaged_or_modified(self):
+        with self.assertRaises(ValueError):
+            engine.set_enabled("dolphin", "file-tools", enabled=False, confirmed=True)
+        with patch.object(engine, "plan", side_effect=self.plan_result):
+            engine.install("dolphin", "file-tools", install_deps=False, confirmed=True)
+        target = self.root / "data/kio/servicemenus/redclaw-file-tools-file-tools-sha256.desktop"
+        target.write_text("user edited", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "modified"):
+            engine.set_enabled("dolphin", "file-tools", enabled=False, confirmed=True)
+        self.assertEqual(target.read_text(), "user edited")
 
     def test_thunar_preserves_user_actions(self):
         thunar = adapters.thunar_file()
