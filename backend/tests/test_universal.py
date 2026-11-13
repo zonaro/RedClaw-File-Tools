@@ -143,6 +143,56 @@ class BackendTests(unittest.TestCase):
             engine.set_enabled("dolphin", "file-tools", enabled=False, confirmed=True)
         self.assertEqual(target.read_text(), "user edited")
 
+    def test_import_existing_nautilus_plugin_without_removing_helpers(self):
+        entry = engine.get_entry(engine.read_catalog(), "file-tools")
+        active, inactive = engine._legacy_plugin_paths(entry)
+        active.parent.mkdir(parents=True, exist_ok=True)
+        active.write_text("# existing local plugin\n", encoding="utf8")
+        helper = active.parent / "custom-helper.py"
+        helper.write_text("# untouched\n", encoding="utf8")
+        self.assertEqual(engine.installed_status(entry, "nautilus", engine._load_state()),
+                         "external")
+        imported = engine.adopt_legacy("nautilus", "file-tools", confirmed=True)
+        self.assertEqual(imported["status"], "installed")
+        engine.set_enabled("nautilus", "file-tools", enabled=False, confirmed=True)
+        self.assertTrue(helper.exists())
+        self.assertFalse(active.exists())
+        engine.set_enabled("nautilus", "file-tools", enabled=True, confirmed=True)
+        engine.uninstall("nautilus", "file-tools", confirmed=True)
+        self.assertFalse(active.exists())
+        self.assertTrue(helper.exists())
+
+    def test_import_disabled_legacy_extension_preserves_state(self):
+        entry = engine.get_entry(engine.read_catalog(), "file-tools")
+        active, inactive = engine._legacy_plugin_paths(entry)
+        inactive.parent.mkdir(parents=True, exist_ok=True)
+        inactive.write_text("# legacy disabled\n", encoding="utf8")
+        self.assertEqual(engine.installed_status(entry, "nautilus", engine._load_state()),
+                         "external_disabled")
+        result = engine.adopt_legacy("nautilus", "file-tools", confirmed=True)
+        self.assertEqual(result["status"], "disabled")
+        self.assertFalse(inactive.exists())
+        self.assertEqual(engine.installed_status(entry, "nautilus", engine._load_state()),
+                         "disabled")
+        engine.set_enabled("nautilus", "file-tools", enabled=True, confirmed=True)
+        self.assertTrue(active.exists())
+
+    def test_removing_legacy_manager_backs_up_only_its_module(self):
+        obsolete = engine.legacy_manager_path()
+        obsolete.parent.mkdir(parents=True, exist_ok=True)
+        obsolete.write_text("# old manager\n", encoding="utf8")
+        other = obsolete.parent / "file-tools.py"
+        other.write_text("# must remain\n", encoding="utf8")
+        self.assertTrue(engine.inventory()["legacy_manager_present"] is False or
+                        obsolete.is_file())
+        with self.assertRaises(ValueError):
+            engine.retire_legacy_manager(confirmed=False)
+        removed = engine.retire_legacy_manager(confirmed=True)
+        self.assertEqual(removed["status"], "removed")
+        self.assertFalse(obsolete.exists())
+        self.assertEqual(Path(removed["backup"]).read_text(), "# old manager\n")
+        self.assertTrue(other.exists())
+
     def test_thunar_preserves_user_actions(self):
         thunar = adapters.thunar_file()
         thunar.parent.mkdir(parents=True, exist_ok=True)
