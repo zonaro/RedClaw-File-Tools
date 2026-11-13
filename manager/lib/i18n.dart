@@ -58,5 +58,7 @@ const translations = <String, Map<String, String>>{
   'no_deps': {'pt': 'Nenhuma dependência adicional necessária.', 'en': 'No additional dependencies required.', 'es': 'No se requieren dependencias adicionales.', 'fr': 'Aucune dépendance supplémentaire requise.', 'de': 'Keine zusätzlichen Abhängigkeiten erforderlich.'},
   'runtime_note': {'pt': 'O AppImage pode ser fechado após a instalação.', 'en': 'You can close the AppImage after installation.', 'es': 'Puedes cerrar el AppImage después de instalar.', 'fr': 'Vous pouvez fermer l’AppImage après l’installation.', 'de': 'Das AppImage kann nach der Installation geschlossen werden.'},
   'languages': {'pt': 'Idioma', 'en': 'Language', 'es': 'Idioma', 'fr': 'Langue', 'de': 'Sprache'},
+  'conflicts': {'pt': 'Conflitos de extensões', 'en': 'Extension conflicts', 'es': 'Conflictos de extensiones', 'fr': 'Conflits d’extensions', 'de': 'Erweiterungskonflikte'},
+  'remove_conflicts': {'pt': 'Desinstale antes a extensão conflitante neste gerenciador.', 'en': 'Uninstall the conflicting extension from this file manager first.', 'es': 'Desinstala primero la extensión conflictiva de este gestor.', 'fr': 'Désinstallez d’abord l’extension conflictuelle de ce gestionnaire.', 'de': 'Deinstallieren Sie zuerst die konfliktverursachende Erweiterung in diesem Dateimanager.'},
 };
 String tr(String key, String language) => translations[key]?[language] ?? translations[key]?['en'] ?? key;
