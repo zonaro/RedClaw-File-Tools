@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # install.sh — Nautilus Extensions multi-distro installer
-# Repo: https://github.com/zonaro/Nautilus-Extensions (fork of ToFpon/Nautilus-Extensions)
+# Repo: https://github.com/zonaro/RedClaw-File-Tools (fork of ToFpon/Nautilus-Extensions)
 #
 # Installs selected extensions per-user into
 #   ~/.local/share/nautilus-python/extensions
@@ -16,7 +16,7 @@
 # (e.g. p7zip -> 7zip), and a single failing candidate never aborts the install.
 #
 # One-liner (installs everything, same as before):
-#   curl -fsSL https://raw.githubusercontent.com/zonaro/Nautilus-Extensions/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/zonaro/RedClaw-File-Tools/main/install.sh | bash
 #
 # Local usage:
 #   ./install.sh                              # install all extensions (default)
@@ -37,7 +37,7 @@
 #
 set -euo pipefail
 
-REPO_URL="https://github.com/zonaro/Nautilus-Extensions.git"
+REPO_URL="https://github.com/zonaro/RedClaw-File-Tools.git"
 EXT_DIR="$HOME/.local/share/nautilus-python/extensions"
 PPA_DIR="/usr/share/zonaro-nautilus-extensions"
 
@@ -524,7 +524,7 @@ if [ -z "$SCRIPT_DIR" ] || [ ! -f "$SCRIPT_DIR/folder-color-revival.py" ]; then
     echo "==> Installing git first..."
     try_key git || warn "git could not be installed automatically."
   fi
-  SCRIPT_DIR="$(mktemp -d)/Nautilus-Extensions"
+  SCRIPT_DIR="$(mktemp -d)/RedClaw-File-Tools"
   git clone --depth 1 "$REPO_URL" "$SCRIPT_DIR"
   trap 'rm -rf "$(dirname "$SCRIPT_DIR")"' EXIT
 fi
