@@ -193,6 +193,19 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(Path(removed["backup"]).read_text(), "# old manager\n")
         self.assertTrue(other.exists())
 
+    def test_extension_language_setting_preserves_old_config_location(self):
+        config = self.root / "config/nautilus-extensions/language"
+        self.assertEqual(engine.extension_language(), "auto")
+        self.assertEqual(engine.set_extension_language("pt-BR")["language"], "pt")
+        self.assertEqual(config.read_text(encoding="utf8"), "pt_br\n")
+        self.assertEqual(engine.extension_language(), "pt")
+        engine.set_extension_language("de")
+        self.assertEqual(engine.extension_language(), "de")
+        engine.set_extension_language("auto")
+        self.assertFalse(config.exists())
+        with self.assertRaises(ValueError):
+            engine.set_extension_language("invalid")
+
     def test_thunar_preserves_user_actions(self):
         thunar = adapters.thunar_file()
         thunar.parent.mkdir(parents=True, exist_ok=True)
