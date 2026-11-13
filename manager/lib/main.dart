@@ -185,6 +185,7 @@ class _ManagerHomeState extends State<ManagerHome> {
       final missing = List<String>.from(dependencyInfo['missing'] as List? ?? []);
       final packages = List<String>.from(dependencyInfo['packages'] as List? ?? []);
       final unresolved = List<String>.from(dependencyInfo['unresolved'] as List? ?? []);
+      final conflicts = List<String>.from(plan?['conflicts'] as List? ?? []);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
@@ -221,6 +222,12 @@ class _ManagerHomeState extends State<ManagerHome> {
                         Text('${t('missing')}: ${unresolved.join(', ')}',
                             style: TextStyle(color: Theme.of(context).colorScheme.error)),
                       ],
+                      if (conflicts.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text('${t('conflicts')}: ${conflicts.join(', ')}',
+                            style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        Text(t('remove_conflicts')),
+                      ],
                       if (missing.isNotEmpty)
                         CheckboxListTile(
                           contentPadding: EdgeInsets.zero,
@@ -243,7 +250,7 @@ class _ManagerHomeState extends State<ManagerHome> {
                 child: Text(t('cancel')),
               ),
               FilledButton(
-                onPressed: (!remove && (unresolved.isNotEmpty ||
+                onPressed: (!remove && (unresolved.isNotEmpty || conflicts.isNotEmpty ||
                     (missing.isNotEmpty && !installDependencies)))
                     ? null
                     : () => Navigator.pop(dialogContext, true),
