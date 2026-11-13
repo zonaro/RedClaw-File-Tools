@@ -340,6 +340,10 @@ def test_editor_three_resizable_panels():
         assert ed.listbox.get_parent() is not None
         ed._apply_responsive_layout(1100)
         assert ed.main_split.get_orientation() == Gtk.Orientation.HORIZONTAL
+        # Dragged splitters return to the user's chosen widths after a
+        # horizontal -> vertical -> horizontal responsive transition.
+        assert ed.main_split.get_position() == 310
+        assert ed.right_split.get_position() == 430
     finally:
         ed.dialog.destroy()
 
