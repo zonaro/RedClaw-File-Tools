@@ -1,0 +1,48 @@
+name: GTK folder icon editor tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'folder_icon_editor.py'
+      - 'folder-color-revival.py'
+      - 'folder_icon_project.py'
+      - 'folder_icon_theme.py'
+      - 'tests/gtk/**'
+      - 'tests/unit/test_folder_icon_ui.py'
+      - '.github/workflows/gtk-editor.yml'
+  pull_request:
+    paths:
+      - 'folder_icon_editor.py'
+      - 'folder-color-revival.py'
+      - 'folder_icon_project.py'
+      - 'folder_icon_theme.py'
+      - 'tests/gtk/**'
+      - '.github/workflows/gtk-editor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gtk-editor:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK4 and Python test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-gi python3-pil python3-pytest python3-cairo \
+            gir1.2-gtk-4.0 gir1.2-gdkpixbuf-2.0 gir1.2-pango-1.0 \
+            gir1.2-adw-1 xvfb xauth xdotool ffmpeg
+      - name: Compile Python sources
+        run: /usr/bin/python3 -m py_compile folder_icon_editor.py folder-color-revival.py
+      - name: Validate resizable panes and existing editor interactions under Xvfb
+        env:
+          GDK_BACKEND: x11
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          xvfb-run -a -s "-screen 0 1600x1000x24" \
+            /usr/bin/python3 -m pytest tests/gtk/test_folder_icon_editor_gtk.py -q
