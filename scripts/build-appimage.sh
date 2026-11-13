@@ -48,7 +48,14 @@ for file in color_database.json comic-reader comic-reader.desktop nautilus-follo
 done
 cp "$ROOT/scripts/redclaw-file-tools.desktop" "$APPDIR/redclaw-file-tools.desktop"
 cp "$ROOT/assets/redclaw-file-tools.svg" "$APPDIR/redclaw-file-tools.svg"
-ln -s redclaw-file-tools.svg "$APPDIR/.DirIcon"
+# AppImage thumbnailers require a raster .DirIcon, while desktops can still
+# use the original, infinitely scalable company-brand SVG.
+command -v rsvg-convert >/dev/null 2>&1 || {
+  echo "rsvg-convert missing (install librsvg2-bin)" >&2; exit 1;
+}
+rsvg-convert -w 256 -h 256 "$ROOT/assets/redclaw-file-tools.svg" \
+  -o "$APPDIR/redclaw-file-tools.png"
+ln -s redclaw-file-tools.png "$APPDIR/.DirIcon"
 
 cat > "$APPDIR/AppRun" <<'APPRUN'
 #!/usr/bin/env bash
@@ -81,6 +88,11 @@ APPIMAGE_EXTRACT_AND_RUN=1 "$TOOLS/linuxdeploy" --appdir "$APPDIR" \
   --executable "$APPDIR/usr/bin/redclaw_file_tools" \
   --desktop-file "$ROOT/scripts/redclaw-file-tools.desktop" \
   --icon-file "$ROOT/assets/redclaw-file-tools.svg"
+
+# linuxdeploy may replace the top-level icon/symlink. Keep .DirIcon
+# in PNG format as required by AppImage tools.
+rm -f "$APPDIR/.DirIcon"
+ln -s redclaw-file-tools.png "$APPDIR/.DirIcon"
 
 # linuxdeploy may generate its own launcher; restore our explicit environment.
 cat > "$APPDIR/AppRun" <<'APPRUN'
