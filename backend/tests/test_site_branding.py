@@ -34,6 +34,14 @@ class SiteBrandingTests(unittest.TestCase):
         self.assertNotIn("--zorin", html)
         self.assertNotIn("rgba(139,92,246", html)
 
+    def test_old_manager_is_absent_from_site_and_installer(self):
+        site = (ROOT / "docs/exts.js").read_text(encoding="utf-8")
+        installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertNotIn('id:"extensions-manager"', site)
+        self.assertNotIn('"extensions-manager":', site)
+        self.assertNotIn("  extensions-manager\\n", installer)
+        self.assertFalse((ROOT / "extensions-manager.py").exists())
+
     def test_official_logo_is_exactly_preserved_and_embedded(self):
         logo_path = ROOT / "assets/redclaw_logo.svg"
         site_path = ROOT / "docs/redclaw_logo.svg"
