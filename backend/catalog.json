@@ -1436,6 +1436,74 @@
         }
       },
       "conflicts": []
+    },
+    {
+      "id": "ai-watermarks",
+      "name": "Remove AI Watermarks",
+      "category": "Optional AI add-ons",
+      "optional_addon": true,
+      "source": "https://github.com/zonaro/remove-ai-watermarks-contextmenu",
+      "engine_source": "https://github.com/wiltodelta/remove-ai-watermarks",
+      "files": [],
+      "dependencies": [
+        "uv",
+        "remove-ai-watermarks"
+      ],
+      "portable_actions": [
+        {
+          "id": "identify",
+          "title": "identify"
+        },
+        {
+          "id": "visible",
+          "title": "visible"
+        },
+        {
+          "id": "metadata",
+          "title": "metadata"
+        },
+        {
+          "id": "all",
+          "title": "Remove everything"
+        },
+        {
+          "id": "batch",
+          "title": "Batch processing"
+        }
+      ],
+      "compatibility": {
+        "nautilus": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        },
+        "dolphin": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        },
+        "nemo": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        },
+        "caja": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        },
+        "thunar": {
+          "support": "full",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        },
+        "pcmanfm-qt": {
+          "support": "partial",
+          "recommendation": "optional",
+          "reason": "Optional third-party remove-ai-watermarks CLI. May download AI models and a managed Python runtime; requires explicit approval and never modifies original images."
+        }
+      },
+      "conflicts": []
     }
   ]
 }
