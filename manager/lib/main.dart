@@ -63,11 +63,16 @@ class _RedClawAppState extends State<RedClawApp> {
 
 class ManagerHome extends StatefulWidget {
   const ManagerHome({
-    super.key, required this.language, required this.onLanguageChange,
+    super.key,
+    required this.language,
+    required this.onLanguageChange,
+    this.inventoryLoader,
   });
 
   final String language;
   final ValueChanged<String> onLanguageChange;
+  /// Allows deterministic UI tests without a local Python backend.
+  final Future<Map<String, dynamic>> Function()? inventoryLoader;
 
   @override
   State<ManagerHome> createState() => _ManagerHomeState();
@@ -143,7 +148,9 @@ class _ManagerHomeState extends State<ManagerHome> {
       error = null;
     });
     try {
-      final data = await _cli('inventory');
+      final data = widget.inventoryLoader != null
+          ? await widget.inventoryLoader!()
+          : await _cli('inventory');
       if (!mounted) return;
       final managers = data['file_managers'] as List<dynamic>? ?? [];
       setState(() {
@@ -408,6 +415,13 @@ class _ManagerHomeState extends State<ManagerHome> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: widget.language,
+                isDense: true,
+                selectedItemBuilder: (context) => languageNames.keys
+                    .map((code) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Text(code == 'pt' ? 'PT-BR' : code.toUpperCase()),
+                        ))
+                    .toList(),
                 items: languageNames.entries.map((entry) => DropdownMenuItem(
                   value: entry.key,
                   child: Text(entry.value),
