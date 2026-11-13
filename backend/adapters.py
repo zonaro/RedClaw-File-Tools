@@ -37,6 +37,12 @@ ACTION_LABELS = {
         "fr": "Convertir l’image en PNG",
         "de": "Bild in PNG umwandeln",
     },
+    "identify": {"en": "Identify AI watermarks", "pt": "Identificar marcas de IA", "es": "Identificar marcas de agua de IA", "fr": "Identifier les filigranes IA", "de": "KI-Wasserzeichen erkennen"},
+    "visible": {"en": "Remove visible AI watermark", "pt": "Remover marca d’água visível de IA", "es": "Eliminar marca de agua visible de IA", "fr": "Supprimer le filigrane IA visible", "de": "Sichtbares KI-Wasserzeichen entfernen"},
+    "metadata": {"en": "Remove AI metadata", "pt": "Remover metadados de IA", "es": "Eliminar metadatos de IA", "fr": "Supprimer les métadonnées IA", "de": "KI-Metadaten entfernen"},
+    "all": {"en": "Remove AI watermarks and metadata", "pt": "Remover marcas e metadados de IA", "es": "Eliminar marcas y metadatos de IA", "fr": "Supprimer filigranes et métadonnées IA", "de": "KI-Wasserzeichen und Metadaten entfernen"},
+    "batch": {"en": "Batch remove visible AI watermarks", "pt": "Remover marcas visíveis em lote", "es": "Eliminar marcas visibles por lote", "fr": "Supprimer les filigranes visibles par lot", "de": "Sichtbare Wasserzeichen im Stapel entfernen"},
+
 }
 
 
@@ -82,6 +88,19 @@ def render_files(fm: str, entry: dict, payload: Path) -> dict[Path, tuple[bytes,
     """Returns only files managed by RedClaw. No writes performed here."""
     slug = entry["id"]
     result: dict[Path, tuple[bytes, int]] = {}
+    if fm == "nautilus" and slug == "ai-watermarks":
+        # Nautilus script menus, not nautilus-python providers.
+        for action in entry.get("portable_actions", []):
+            action_id = action["id"]
+            label = ACTION_LABELS[action_id]["en"]
+            command = (
+                "#!/bin/sh\n"
+                f"exec python3 {shlex.quote(str(runner_path()))} run "
+                f"{shlex.quote(slug)} {shlex.quote(action_id)} \"$@\"\n"
+            )
+            dest = data_home() / "nautilus/scripts/RedClaw File Tools/AI Watermarks" / label
+            result[dest] = (command.encode(), 0o755)
+        return result
     if fm == "nautilus":
         dest = data_home() / "nautilus-python/extensions"
         items = list(dict.fromkeys([*entry["files"], "nautilus_i18n.py"]))
@@ -103,7 +122,12 @@ def render_files(fm: str, entry: dict, payload: Path) -> dict[Path, tuple[bytes,
         safe_name = f"redclaw-file-tools-{slug}-{action_id}"
         command = exec_line(slug, action_id)
         if fm == "dolphin":
-            mimetypes = "image/*;" if slug == "image-tools" else "application/zip;application/x-tar;application/x-compressed-tar;" if slug == "extract-here" else "all/allfiles;inode/directory;"
+            mimetypes = (
+                "image/*;inode/directory;" if slug == "ai-watermarks" and action_id == "batch"
+                else "image/*;" if slug in ("image-tools", "ai-watermarks")
+                else "application/zip;application/x-tar;application/x-compressed-tar;" if slug == "extract-here"
+                else "all/allfiles;inode/directory;"
+            )
             text = (
                 "[Desktop Entry]\n"
                 "Type=Service\n"
