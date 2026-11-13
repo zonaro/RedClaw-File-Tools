@@ -90,17 +90,22 @@ def _external_nautilus(entry: dict) -> bool:
 def installed_status(entry: dict, fm: str, state: dict) -> str:
     record = state["installed"].get(_key(fm, entry["id"]))
     if record:
+        disabled = record.get("enabled", True) is False
+        disabled_files = record.get("disabled_files", {})
         if fm == "thunar":
-            return "installed" if adapters.thunar_has(entry) else "broken"
-        for path, expected in record.get("files", {}).items():
-            target = Path(path)
+            has_actions = adapters.thunar_has(entry)
+            if has_actions == disabled:
+                return "modified"
+        for name, expected in record.get("files", {}).items():
+            target = Path(disabled_files.get(name, name))
             if not target.is_file() or _sha(target.read_bytes()) != expected:
                 return "modified"
-        return "installed"
+            if name in disabled_files and Path(name).exists():
+                return "modified"
+        return "disabled" if disabled else "installed"
     if fm == "nautilus" and _external_nautilus(entry):
         return "external"
     return "not_installed"
-
 
 def inventory() -> dict:
     catalog = read_catalog()
@@ -178,6 +183,8 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
         raise RuntimeError("Remove conflicting extensions first: " + ", ".join(planned["conflicts"]))
     if planned["status"] == "external":
         raise RuntimeError("An unmanaged Nautilus installation already exists. Refusing to overwrite it.")
+    if planned["status"] == "disabled":
+        raise RuntimeError("Enable this extension before updating it.")
     if planned["status"] == "modified":
         raise RuntimeError("Managed files were modified or removed; refusing to overwrite without recovery.")
     entry = get_entry(read_catalog(), slug)
@@ -222,8 +229,9 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
             _atomic_write(dest, content, mode)
         if fm == "thunar":
             adapters.thunar_change(entry, True)
-        record = {"file_manager": fm, "slug": slug,
-                  "files": {str(dest): _sha(content) for dest, (content, _) in mapping.items()}}
+        record = {"file_manager": fm, "slug": slug, "enabled": True,
+                  "files": {str(dest): _sha(content) for dest, (content, _) in mapping.items()},
+                  "modes": {str(dest): mode for dest, (_, mode) in mapping.items()}}
         state["installed"][key] = record
         # Shared helper changes are owned by each consumer; synchronize hashes.
         for other_key, other in state["installed"].items():
