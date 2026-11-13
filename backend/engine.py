@@ -143,12 +143,15 @@ def plan(fm: str, slug: str) -> dict:
         raise ValueError(f"File manager not installed: {fm}")
     state = _load_state()
     dep = dependencies.dependency_plan(entry, fm)
+    conflicts = [candidate for candidate in entry.get("conflicts", [])
+                 if _key(fm, candidate) in state["installed"]]
     return {
         "file_manager": fm,
         "slug": slug,
         "support": capability["support"],
         "recommendation": capability["recommendation"],
         "status": installed_status(entry, fm, state),
+        "conflicts": conflicts,
         "dependencies": dep,
         "requires_confirmation": True,
     }
@@ -171,6 +174,8 @@ def install(fm: str, slug: str, *, install_deps: bool, confirmed: bool) -> dict:
     if not confirmed:
         raise ValueError("Installation requires explicit --yes confirmation.")
     planned = plan(fm, slug)
+    if planned["conflicts"]:
+        raise RuntimeError("Remove conflicting extensions first: " + ", ".join(planned["conflicts"]))
     if planned["status"] == "external":
         raise RuntimeError("An unmanaged Nautilus installation already exists. Refusing to overwrite it.")
     if planned["status"] == "modified":
