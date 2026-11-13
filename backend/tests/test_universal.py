@@ -46,7 +46,7 @@ class BackendTests(unittest.TestCase):
 
     def test_catalog_all_extensions(self):
         catalog = engine.read_catalog()
-        self.assertEqual(len(catalog["extensions"]), 30)
+        self.assertEqual(len(catalog["extensions"]), 31)
         self.assertIn("dolphin", [fm["id"] for fm in catalog["file_managers"]])
         for entry in catalog["extensions"]:
             self.assertEqual(len(entry["compatibility"]), 6)
