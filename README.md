@@ -62,7 +62,6 @@ sudo apt update
 sudo apt install \
   nautilus-dual-panel \
   nautilus-column-browser \
-  nautilus-extensions-manager \
   nautilus-archive-browser \
   nautilus-extract-here \
   nautilus-compress-pdf \
@@ -158,7 +157,6 @@ ao mesmo tempo na mesma máquina.
 | 🧭 **Column Browser** | `nautilus-column-browser` | Miller-columns (macOS Finder style) folder browser |
 | 🎨 **Comic Tools** | `zonaro-nautilus-comic-tools` | Open CBZ/CBR/CB7/CBT comics page by page, in natural order, with a page cache |
 | 🧷 **Move and Symlink** | `zonaro-nautilus-move-and-symlink` | Move files/folders to another folder and leave a symlink at the original spot |
-| ⚙️ **Extensions Manager** | `nautilus-extensions-manager` | Enable/disable extensions on the fly |
 | 🗜️ **Archive Browser** | `nautilus-archive-browser` | Browse, extract and **create** archives |
 | 📦 **Extract Here** | `nautilus-extract-here` | Fast extraction (7z, rar, zip…) with multi-volume & password |
 | 🗜️ **Compress PDF** | `nautilus-compress-pdf` | PDF compression via Ghostscript |
@@ -245,7 +243,7 @@ All packages install scripts into a dedicated namespace:
 └── ...
 ```
 
-The shared **`nautilus-extensions-tof-common`** package handles symlink creation for every user at session start via `xdg-autostart`. This way the **Extensions Manager** can detect and toggle extensions per-user, while keeping system installation clean and shared.
+The shared **`nautilus-extensions-tof-common`** package handles symlink creation for every user at session start via `xdg-autostart`. The **RedClaw File Tools Flutter manager** now manages extension activation per file manager, while preserving the existing shared-package workflow.
 
 If an extension is disabled (moved to `~/.local/share/nautilus-python/extensions/disabled/` by the manager), the link will **not** be recreated at next login — your preference is respected.
 
@@ -559,15 +557,17 @@ Run scripts straight from the Nautilus context menu and drop into a terminal in 
 
 ---
 
-## ⚙️ Featured: Extensions Manager
+## ⚙️ Managing extensions with the Flutter app
 
-A central hub to manage all the other extensions without manually moving files.
+The legacy Nautilus context-menu Extensions Manager has been retired.
+**RedClaw File Tools** now provides independent installation, update,
+enable/disable and removal per file manager, with a safety check before
+changing user files. Older Nautilus installations can be imported explicitly;
+shared helpers and preferences are preserved. The retired legacy manager can
+be detached from the Nautilus menu with a reversible backup.
 
-- List all installed extensions (active and disabled)
-- Enable/disable each extension with a single click
-- Auto-resize window based on extension count
-- Restart Nautilus button to apply changes instantly
-- Respected by `nautilus-extensions-tof-link` — disabled extensions stay disabled across reboots
+See [universal architecture](docs/universal/architecture.md) for limitations
+and migration details.
 
 ---
 
