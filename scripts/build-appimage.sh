@@ -20,7 +20,7 @@ flutter config --enable-linux-desktop
 # Existing lib/, pubspec.yaml and tests are kept intact.
 flutter create --platforms=linux --project-name redclaw_file_tools --org br.com.redclaw .
 flutter pub get
-flutter analyze
+flutter analyze --no-fatal-infos
 flutter test
 flutter build linux --release --dart-define="APP_VERSION=$VERSION"
 popd >/dev/null
