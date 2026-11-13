@@ -100,6 +100,7 @@ class AppImageLibraryTests(unittest.TestCase):
             LAUNCHER,
             STRIP,
             ROOT / "scripts/build-appimage.sh",
+            ROOT / "scripts/smoke-appimage.sh",
         ):
             with self.subTest(source=source.name):
                 subprocess.run(["bash", "-n", str(source)], check=True)
