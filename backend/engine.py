@@ -136,6 +136,8 @@ def inventory() -> dict:
                 if not any(piece in data.lower() for piece in ("debian", "ubuntu", "linuxmint")):
                     info.update(recommendation="redundant", reason="DEB packages are not native on this distribution.")
             info["status"] = installed_status(entry, fm_id, state)
+            info["legacy_adopted"] = bool(state["installed"].get(
+                _key(fm_id, entry["id"]), {}).get("legacy_adopted"))
             compatibility[fm_id] = info
         entries.append({
             "id": entry["id"], "name": entry["name"], "category": entry["category"],
@@ -145,8 +147,12 @@ def inventory() -> dict:
         "product": catalog["product"], "schema_version": 1,
         "file_managers": fms, "extensions": entries,
         "managed_count": len(state["installed"]),
-        "legacy_manager_present": legacy_manager_path().is_file() or
-                                  legacy_manager_path().is_symlink(),
+        "legacy_manager_present": any(
+            item.is_file() or item.is_symlink() for item in (
+                legacy_manager_path(),
+                legacy_manager_path().parent / "disabled/extensions-manager.py"
+            )
+        ),
         "extension_language": extension_language(),
     }
 
