@@ -2192,6 +2192,15 @@ class _Editor:
         self.switching = False
         self._responsive_pending = False
         self._last_allocated_width = None
+        # Remember user splitter positions across wide/narrow layouts.
+        # Persist only the horizontal workspace measurements.
+        self._split_positions = {
+            "wide": [
+                self._pane_preference("editor_tools_width", 270),
+                self._pane_preference("editor_canvas_width", 590),
+            ],
+            "narrow": [340, 340],
+        }
         self.drag_active = False
         self.drag_base = (0, 0)
         self.sliders = {}
@@ -2317,6 +2326,38 @@ class _Editor:
         row.append(label)
         row.append(widget)
         return row
+
+    @staticmethod
+    def _pane_preference(key, default):
+        """Read bounded pane widths; ignore invalid or stale preference data."""
+        try:
+            value = int(get_preference(key, str(default)))
+        except (TypeError, ValueError):
+            return default
+        return value if 180 <= value <= 1200 else default
+
+    def _remember_split_positions(self):
+        """Retain dimensions for the active orientation before reflow/close."""
+        current = getattr(self, "_layout_narrow", None)
+        if current is None:
+            return
+        key = "narrow" if current else "wide"
+        try:
+            values = (self.main_split.get_position(),
+                      self.right_split.get_position())
+        except Exception:
+            return
+        if all(100 <= int(value) <= 1600 for value in values):
+            self._split_positions[key] = list(values)
+
+    def _save_wide_split_positions(self):
+        """Persist wide-layout splitter sizes without storing transient narrow sizes."""
+        if getattr(self, "_layout_narrow", None) is False:
+            self._remember_split_positions()
+        tools, canvas = self._split_positions["wide"]
+        if 180 <= tools <= 1200 and 180 <= canvas <= 1200:
+            set_preference("editor_tools_width", tools)
+            set_preference("editor_canvas_width", canvas)
 
     # -- construction -----------------------------------------------------
     def _build(self):
@@ -2459,18 +2500,23 @@ class _Editor:
         narrow = width < self._RESPONSIVE_THRESHOLD
         if narrow == getattr(self, "_layout_narrow", None):
             return
+        # GTK Paned resets positions on orientation changes. Snapshot the
+        # current layout before flipping so user-adjusted widths survive.
+        self._remember_split_positions()
         self._layout_narrow = narrow
         orientation = (Gtk.Orientation.VERTICAL if narrow
                        else Gtk.Orientation.HORIZONTAL)
         self.upper.set_orientation(orientation)
         self.main_split.set_orientation(orientation)
         self.right_split.set_orientation(orientation)
-        if narrow:
-            self.main_split.set_position(340)
-            self.right_split.set_position(340)
-        else:
-            self.main_split.set_position(270)
-            self.right_split.set_position(max(260, width - 270 - 290))
+        left, middle = self._split_positions["narrow" if narrow else "wide"]
+        if not narrow:
+            # Keep enough horizontal space for the canvas and layer sidebar
+            # even when the window was resized since the last edit session.
+            left = min(left, max(180, width - 450))
+            middle = min(middle, max(220, width - left - 200))
+        self.main_split.set_position(left)
+        self.right_split.set_position(middle)
         self.upper.queue_resize()
 
     def _install_resize_controller(self, dialog):
@@ -3113,7 +3159,11 @@ class _Editor:
         self._export_temp_files.clear()
 
     def _on_dialog_destroy(self, _dialog):
-        """Clean up temp export files when the editor dialog is destroyed."""
+        """Persist pane widths and clean up temporary editor artifacts."""
+        try:
+            self._save_wide_split_positions()
+        except Exception as e:
+            log.debug(f"save editor splitter preferences: {e}")
         self.regen_job = None
         self._cleanup_unused_cache()
 
