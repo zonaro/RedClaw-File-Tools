@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'i18n.dart';
+import 'host_process_environment.dart';
 
 const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'development');
 const redClawRed = Color(0xFFBB283E);
@@ -106,7 +107,12 @@ class _ManagerHomeState extends State<ManagerHome> {
   Future<Map<String, dynamic>> _cli(String command, [List<String> args = const []]) async {
     final result = await Process.run('python3', [
       _backendPath(), '--json', command, ...args,
-    ], runInShell: false);
+    ],
+      runInShell: false,
+      // Never leak AppImage-packaged GTK/GLib into the host Python process.
+      environment: hostProcessEnvironment(Platform.environment),
+      includeParentEnvironment: false,
+    );
     final output = result.stdout.toString().trim();
     Map<String, dynamic> data;
     try {
