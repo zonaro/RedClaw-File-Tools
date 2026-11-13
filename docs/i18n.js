@@ -46,7 +46,7 @@ en: {
   inst_sub: "Get the Flutter AppImage from GitHub Releases. The commands below are legacy installation methods for the Nautilus-only extension collection.",
   inst_note: "Upstream PPA? The original <code>ppa:nourpon/nautilus-extensions</code> (<code>nautilus-*</code>) still works — this fork just ships its own <code>zonaro-nautilus-*</code> packages plus the script above. Prefer it manual? Clone the repo and copy the <code>.py</code> files plus <code>color_database.json</code> into <code>~/.local/share/nautilus-python/extensions/</code>, then run <code>nautilus -q</code>.",
   foot_tribute: 'In memory of <b>Lola</b> — some scripts in this collection bear her name, in tribute to a dear sysadmin friend. <span class="heart">♥</span>',
-  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/Nautilus-Extensions</a> (fork of <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Made with 💜 for Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> No telemetry, no nonsense'
+  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/RedClaw-File-Tools</a> (fork of <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Made with 💜 for Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> No telemetry, no nonsense'
 },
 fr: {
   meta_title: "RedClaw File Tools — extensions pour les gestionnaires de fichiers Linux",
@@ -94,7 +94,7 @@ fr: {
   inst_sub: "Téléchargez le Flutter AppImage depuis les Releases GitHub. Les commandes ci-dessous concernent les anciennes extensions Nautilus.",
   inst_note: "PPA amont ? Le <code>ppa:nourpon/nautilus-extensions</code> d'origine (<code>nautilus-*</code>) fonctionne toujours — ce fork ajoute ses propres paquets <code>zonaro-nautilus-*</code> plus le script ci-dessus. Vous préférez le manuel ? Clonez le dépôt, copiez les <code>.py</code> plus <code>color_database.json</code> dans <code>~/.local/share/nautilus-python/extensions/</code>, puis lancez <code>nautilus -q</code>.",
   foot_tribute: 'En mémoire de <b>Lola</b> — certains scripts portent son nom, en hommage à une chère amie sysadmin. <span class="heart">♥</span>',
-  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/Nautilus-Extensions</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Fait avec 💜 pour Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Ni télémétrie, ni bêtises'
+  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/RedClaw-File-Tools</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Fait avec 💜 pour Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Ni télémétrie, ni bêtises'
 },
 de: {
   meta_title: "RedClaw File Tools — Erweiterungen für Linux-Dateimanager",
@@ -142,16 +142,16 @@ de: {
   inst_sub: "Laden Sie das Flutter AppImage aus den GitHub Releases herunter. Die Befehle unten sind ältere Installationsmethoden nur für Nautilus.",
   inst_note: "Upstream-PPA? Das originale <code>ppa:nourpon/nautilus-extensions</code> (<code>nautilus-*</code>) funktioniert weiterhin — dieser Fork liefert eigene <code>zonaro-nautilus-*</code>-Pakete plus das Skript oben. Lieber manuell? Repo klonen, die <code>.py</code>-Dateien plus <code>color_database.json</code> nach <code>~/.local/share/nautilus-python/extensions/</code> kopieren, dann <code>nautilus -q</code> ausführen.",
   foot_tribute: 'Zum Gedenken an <b>Lola</b> — manche Skripte tragen ihren Namen, zu Ehren einer lieben Sysadmin-Freundin. <span class="heart">♥</span>',
-  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/Nautilus-Extensions</a> (Fork von <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Mit 💜 für Ubuntu, Fedora &amp; GNOME gemacht <span class="sep">·</span> Keine Telemetrie, kein Unsinn'
+  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/RedClaw-File-Tools</a> (Fork von <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Mit 💜 für Ubuntu, Fedora &amp; GNOME gemacht <span class="sep">·</span> Keine Telemetrie, kein Unsinn'
 },
 "pt-BR": {
-  meta_title: "RedClaw File Tools — Erweiterungen für Linux-Dateimanager",
-  meta_desc: "Mehrsprachiger Flutter-AppImage-Manager für Linux-Dateimanager: vollständige Nautilus-Tools und erste portable Funktionen.",
+  meta_title: "RedClaw File Tools — extensões para gerenciadores de arquivos Linux",
+  meta_desc: "Gerenciador Flutter AppImage multilíngue para extensões Linux, com integração completa ao Nautilus e ações portáveis para outros gerenciadores.",
   nav_features: "Extensões", nav_all: "Todas as ferramentas", nav_install: "Instalar",
-  hero_eyebrow: "30 Erweiterungen · Flutter AppImage · mehrere Dateimanager · GPL-3.0",
-  hero_title: "Ein Werkzeugkasten für mehrere Linux-Dateimanager.<br><span class=\"accent\">RedClaw File Tools</span>.",
-  hero_lede: "Nutzen Sie die bestehenden Nautilus-Erweiterungen und verwalten Sie portable Aktionen für Dolphin, Nemo, Caja und Thunar über Flutter. Der Support wird ausgebaut.",
-  btn_install: "AppImage herunterladen",
+  hero_eyebrow: "30 extensões · Flutter AppImage · vários gerenciadores · GPL-3.0",
+  hero_title: "Um kit de ferramentas para vários gerenciadores Linux.<br><span class=\"accent\">RedClaw File Tools</span>.",
+  hero_lede: "Mantenha as extensões Python originais do Nautilus e gerencie ações portáveis para Dolphin, Nemo, Caja e Thunar em um único aplicativo Flutter. A compatibilidade com outros gerenciadores está em expansão.",
+  btn_install: "Baixar o AppImage",
   s1l: "Extensões incluídas", s2l: "Idiomas — FR · EN · DE · PT-BR · ES",
   s3l: "Interface libadwaita nativa", s4l: "Telemetria, anúncios, enrolação",
   f1tag: "Painel duplo", f1t: "Dois painéis. Uma janela. Metade dos cliques.",
@@ -183,14 +183,14 @@ de: {
   f5b2: "<b>7z e RAR multi-volume</b> (.001, .002…) tratados nativamente.",
   f5b3: "<b>Protegidos por senha</b>, extração seletiva, arrastar e soltar.",
   grid_tag: "A coleção completa",
-  grid_title: "30 Werkzeuge, eine Sammlung.",
-  grid_sub: "Wählen Sie den Dateimanager und installieren Sie nur sinnvolle Erweiterungen.",
+  grid_title: "30 ferramentas, uma coleção.",
+  grid_sub: "Escolha seu gerenciador de arquivos e instale apenas as extensões que fazem sentido para ele.",
   inst_tag: "Começando",
-  inst_title: "RedClaw File Tools installieren.",
-  inst_sub: "Laden Sie das Flutter AppImage aus den GitHub Releases herunter. Die Befehle unten sind ältere Installationsmethoden nur für Nautilus.",
+  inst_title: "Instale o RedClaw File Tools.",
+  inst_sub: "Baixe o Flutter AppImage pelo GitHub Releases. Os comandos abaixo são métodos de instalação legados das extensões exclusivas do Nautilus.",
   inst_note: "PPA upstream? O <code>ppa:nourpon/nautilus-extensions</code> original (<code>nautilus-*</code>) continua funcionando — este fork só adiciona seus próprios pacotes <code>zonaro-nautilus-*</code> mais o script acima. Prefere manual? Clone o repositório, copie os <code>.py</code> mais o <code>color_database.json</code> para <code>~/.local/share/nautilus-python/extensions/</code> e rode <code>nautilus -q</code>.",
   foot_tribute: 'Em memória de <b>Lola</b> — alguns scripts levam seu nome, em homenagem a uma querida amiga sysadmin. <span class="heart">♥</span>',
-  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/Nautilus-Extensions</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Feito com 💜 para Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Sem telemetria, sem enrolação'
+  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/RedClaw-File-Tools</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Feito com 💜 para Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Sem telemetria, sem enrolação'
 },
 es: {
   meta_title: "RedClaw File Tools — extensiones para gestores de archivos Linux",
@@ -238,7 +238,7 @@ es: {
   inst_sub: "Descarga el Flutter AppImage desde GitHub Releases. Los comandos de abajo son métodos antiguos solo para extensiones de Nautilus.",
   inst_note: "¿PPA original? El <code>ppa:nourpon/nautilus-extensions</code> (<code>nautilus-*</code>) sigue funcionando — este fork añade sus propios paquetes <code>zonaro-nautilus-*</code> más el script de arriba. ¿Prefiere manual? Clone el repositorio, copie los <code>.py</code> más <code>color_database.json</code> a <code>~/.local/share/nautilus-python/extensions/</code> y ejecute <code>nautilus -q</code>.",
   foot_tribute: 'En memoria de <b>Lola</b> — algunos scripts llevan su nombre, en homenaje a una querida amiga sysadmin. <span class="heart">♥</span>',
-  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/Nautilus-Extensions</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Hecho con 💜 para Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Sin telemetría, sin tonterías'
+  foot_meta: '<a href="https://github.com/zonaro/RedClaw-File-Tools">zonaro/RedClaw-File-Tools</a> (fork de <a href="https://github.com/ToFpon/Nautilus-Extensions">ToFpon/Nautilus-Extensions</a>) <span class="sep">·</span> GPL-3.0 <span class="sep">·</span> Hecho con 💜 para Ubuntu, Fedora &amp; GNOME <span class="sep">·</span> Sin telemetría, sin tonterías'
 }
 };
 const SITE_LANGS = ["en", "fr", "de", "pt-BR", "es"];
