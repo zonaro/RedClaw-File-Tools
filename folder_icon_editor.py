@@ -48,7 +48,7 @@ except Exception as e:  # pragma: no cover - PIL is a hard dependency
 
 
 CANVAS_SIZE = 256
-PREVIEW_SIZE = 128
+PREVIEW_SIZE = 320  # larger editable canvas in the center pane
 
 LAYER_IMAGE = "image"
 LAYER_TEXT = "text"
