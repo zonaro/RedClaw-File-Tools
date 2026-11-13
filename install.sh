@@ -60,7 +60,7 @@ SLUGS=(
   dual-panel
   duration-column
   edit-with
-  extensions-manager
+
   extract-here
   file-tools
   folder-color-revival
@@ -94,7 +94,6 @@ slug_desc() {
     dual-panel)           echo "Dual-pane file manager (F3)";;
     duration-column)      echo "Duration column for audio/video";;
     edit-with)            echo "Open text files with any installed editor";;
-    extensions-manager)   echo "Enable/disable extensions on the fly";;
     extract-here)         echo "Fast archive extraction (7z, rar, zip...)";;
     file-tools)           echo "Friendly rename, copy path, symlinks...";;
     folder-color-revival) echo "Folder color & emblem tagging";;
