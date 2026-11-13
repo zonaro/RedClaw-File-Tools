@@ -1,0 +1,122 @@
+name: Build and release Flutter AppImage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manager/**'
+      - 'backend/**'
+      - 'scripts/build-appimage.sh'
+      - 'scripts/redclaw-file-tools.desktop'
+      - 'assets/redclaw-file-tools.svg'
+      - '.github/workflows/appimage-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: appimage-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  appimage:
+    name: Flutter Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      TZ: America/Sao_Paulo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev curl file
+
+      - name: Install stable Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Compute version at build time (São Paulo)
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(TZ=America/Sao_Paulo date +'%y.%j.%H%M')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Build version: $VERSION"
+
+      - name: Run backend integration tests
+        run: |
+          python3 -m compileall -q backend
+          python3 -m unittest discover -s backend/tests -p 'test_*.py' -v
+
+      - name: Build Flutter and AppImage
+        shell: bash
+        run: bash scripts/build-appimage.sh
+
+      - name: Verify AppImage output
+        shell: bash
+        run: |
+          test -s "dist/RedClaw_File_Tools-${{ steps.version.outputs.version }}-x86_64.AppImage"
+          cd dist
+          sha256sum -c "RedClaw_File_Tools-${{ steps.version.outputs.version }}-x86_64.AppImage.sha256"
+          file "RedClaw_File_Tools-${{ steps.version.outputs.version }}-x86_64.AppImage"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redclaw-file-tools-appimage-${{ steps.version.outputs.version }}
+          path: |
+            dist/*.AppImage
+            dist/*.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub release (English only)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists for this minute; preserving it."
+            exit 0
+          fi
+          cat > /tmp/redclaw-release-notes.md <<EOF
+          ## RedClaw File Tools $VERSION
+
+          Linux x86_64 AppImage for managing RedClaw file-manager extensions.
+
+          ### Highlights
+          - Detect multiple file managers independently.
+          - Browse compatible and recommended extensions.
+          - Install and uninstall supported integrations per file manager.
+          - Review and install required host dependencies with confirmation.
+          - Five user-interface languages: English, Brazilian Portuguese, Spanish, French, and German.
+
+          ### Installation
+          Download the AppImage, mark it as executable, and launch it.
+          The app installs integrations in the current user's home directory;
+          extensions continue working when the manager is closed.
+
+          ### Important
+          Cross-file-manager parity is still in progress. Nautilus uses the
+          original Python extensions. Other file managers currently expose a
+          limited set of portable actions; unsupported capabilities are
+          identified in the manager. Use the provided SHA-256 checksum to
+          verify the download.
+          EOF
+          gh release create "$TAG" \
+            "dist/RedClaw_File_Tools-$VERSION-x86_64.AppImage" \
+            "dist/RedClaw_File_Tools-$VERSION-x86_64.AppImage.sha256" \
+            --target "${{ github.sha }}" \
+            --title "RedClaw File Tools $VERSION" \
+            --notes-file /tmp/redclaw-release-notes.md
