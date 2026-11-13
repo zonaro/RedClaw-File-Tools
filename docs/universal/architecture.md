@@ -34,6 +34,24 @@ All legacy modules are fully supported **in Nautilus only**. Initial portable ac
 
 All other modules remain incompatible with non-Nautilus managers until dedicated porting and tests are complete. A module may be compatible but redundant (e.g. built-in archive features in Dolphin). User recommendations are advisory; no extension is installed merely because it is recommended.
 
+## Installed extensions and activation state
+
+The Flutter manager now supports `install`, `uninstall`, `enable` and `disable` for each individual `(file manager, extension)` combination. Disabling **moves only owned entrypoint/menu files** out of the file manager's discovery path into private XDG state; it does not delete content, settings, shared Python helpers or host packages. Re-enabling restores the same file bytes and modes. The old Nautilus-only `extensions-manager.py` has been retired and removed from the installer, catalogue and Debian package manifest.
+
+**Legacy Nautilus migration:** the manager detects both regular plugins and previously disabled plugins from `~/.local/share/nautilus-python/extensions/disabled/`. With explicit confirmation, it can adopt just the main plugin file, never untracked shared helpers. Installed package symlinks and modified files cannot be adopted automatically. Existing `extensions-manager.py` can be removed from the context menu with an on-disk backup. New versions do not silently remove old installs.
+
+The Flutter language selector also writes the existing `~/.config/nautilus-extensions/language` preference, preserving localization compatibility with old Nautilus plugins. Non-Nautilus service menus use native localized names.
+
+```bash
+python3 backend/redclaw.py --json enable --fm dolphin --slug file-tools --yes
+python3 backend/redclaw.py --json disable --fm nautilus --slug file-tools --yes
+python3 backend/redclaw.py --json adopt --fm nautilus --slug file-tools --yes
+python3 backend/redclaw.py --json retire-legacy-manager --yes
+python3 backend/redclaw.py --json language --set pt-BR
+```
+
+**Limitations:** Imported legacy modules are not updated until their shared dependencies have been reviewed. The user should restart the affected file manager after enabling/disabling its Python providers. The GTK folder icon editor is still a Nautilus feature, but its interface now offers a resizable three-pane workspace: tools and colours | editable canvas | layers.
+
 ## CLI examples
 
 ```bash
