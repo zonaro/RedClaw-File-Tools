@@ -95,4 +95,50 @@ void main() {
     expect(find.textContaining('Partial support'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('Enabled state is independent for Nautilus and Dolphin', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1080, 700);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final data = demoInventory();
+    data['extensions'] = [
+      {
+        'id': 'file-tools',
+        'name': 'File Tools',
+        'category': 'Files',
+        'compatibility': {
+          'nautilus': {
+            'status': 'disabled',
+            'recommendation': 'recommended',
+            'support': 'full',
+          },
+          'dolphin': {
+            'status': 'installed',
+            'recommendation': 'optional',
+            'support': 'partial',
+          },
+        },
+      },
+    ];
+    await tester.pumpWidget(MaterialApp(
+      home: ManagerHome(
+        language: 'en',
+        onLanguageChange: (_) {},
+        inventoryLoader: () async => data,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Disabled'), findsOneWidget);
+    expect(find.text('Enable'), findsOneWidget);
+    expect(find.text('Uninstall'), findsOneWidget);
+
+    await tester.tap(find.text('Dolphin'));
+    await tester.pumpAndSettle();
+    expect(find.text('Disabled'), findsNothing);
+    expect(find.text('Disable'), findsOneWidget);
+    expect(find.text('Uninstall'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
