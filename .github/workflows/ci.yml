@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'folder_icon_editor.py'
+      - 'folder_icon_project.py'
+      - 'tests/**'
       - 'scripts/**'
       - 'docs/**'
       - 'assets/**'
@@ -12,6 +15,9 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'folder_icon_editor.py'
+      - 'folder_icon_project.py'
+      - 'tests/**'
       - 'scripts/**'
       - 'docs/**'
       - 'assets/**'
@@ -38,3 +44,30 @@ jobs:
         run: |
           node --check docs/exts.js
           node --check docs/i18n.js
+
+  editor-gtk:
+    name: Folder Icon Editor GTK4 smoke tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK4 and headless display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi gir1.2-gtk-4.0 \
+            gir1.2-adw-1 python3-pil python3-cairo \
+            python3-pytest xvfb xauth
+      - name: Check Python syntax
+        run: python3 -m py_compile folder_icon_editor.py
+      - name: Test persisted splitter settings without GUI
+        run: |
+          /usr/bin/python3 -m unittest \
+            tests.unit.test_folder_icon_ui.TestPreferences.test_pane_preferences_are_bounded \
+            tests.unit.test_folder_icon_ui.TestPreferences.test_editor_splitter_sizes_persist_without_overwriting_other_settings -v
+      - name: Test GTK4 resizable three-panel layout under Xvfb
+        env:
+          GDK_BACKEND: x11
+        run: |
+          xvfb-run -a -s "-screen 0 1280x900x24" \
+            /usr/bin/python3 -m pytest tests/gtk/test_folder_icon_editor_gtk.py \
+            -k 'editor_three_resizable_panels or responsive_resize_same_dialog_across_sizes' \
+            -q
