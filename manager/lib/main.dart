@@ -320,6 +320,63 @@ class _ManagerHomeState extends State<ManagerHome> {
     }
   }
 
+  Future<void> _adoptLegacy(Map<String, dynamic> entry) async {
+    if (busy != null || currentManager != 'nautilus') return;
+    final slug = entry['id'] as String;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t('legacy_import')),
+        content: Text(t('legacy_import_warning')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false),
+              child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true),
+              child: Text(t('confirm'))),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => busy = 'nautilus/$slug');
+    try {
+      await _cli('adopt', ['--fm', 'nautilus', '--slug', slug, '--yes']);
+      _message(t('legacy_imported'));
+      await _refresh();
+    } catch (exception) {
+      _message('${t('error')}: $exception');
+    } finally {
+      if (mounted) setState(() => busy = null);
+    }
+  }
+
+  Future<void> _retireLegacyManager() async {
+    if (busy != null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t('legacy_remove')),
+        content: Text(t('legacy_remove_warning')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false),
+              child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true),
+              child: Text(t('remove'))),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => busy = 'legacy-manager');
+    try {
+      await _cli('retire-legacy-manager', ['--yes']);
+      _message(t('legacy_removed'));
+      await _refresh();
+    } catch (exception) {
+      _message('${t('error')}: $exception');
+    } finally {
+      if (mounted) setState(() => busy = null);
+    }
+  }
+
   String _recommendation(Map<String, dynamic> fmInfo) {
     final state = fmInfo['recommendation']?.toString() ?? 'incompatible';
     return t(state);
@@ -347,6 +404,7 @@ class _ManagerHomeState extends State<ManagerHome> {
     final busyHere = busy == '$current/${entry['id']}';
     final explanation = switch (status) {
       'external' => t('external_desc'),
+      'external_disabled' => t('legacy_disabled_desc'),
       'modified' => t('modified_desc'),
       _ when support == 'unsupported' => t('unsupported_desc'),
       _ when support == 'partial' => t('partial_desc'),
@@ -376,7 +434,8 @@ class _ManagerHomeState extends State<ManagerHome> {
                   avatar: const Icon(Icons.check_circle_outline, size: 16),
                   label: Text(t('installed')),
                 ),
-              if (status == 'external' || status == 'modified' || isDisabled)
+              if (status == 'external' || status == 'external_disabled' ||
+                  status == 'modified' || isDisabled)
                 Chip(label: Text(t(status)), visualDensity: VisualDensity.compact),
             ],
           ),
@@ -385,6 +444,15 @@ class _ManagerHomeState extends State<ManagerHome> {
               style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: 5),
           Text(explanation, style: Theme.of(context).textTheme.bodySmall),
+          if ((status == 'external' || status == 'external_disabled') &&
+              current == 'nautilus') ...[
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: busy == null ? () => _adoptLegacy(entry) : null,
+              icon: const Icon(Icons.file_download_outlined),
+              label: Text(t('legacy_import')),
+            ),
+          ],
           if (canManage) ...[
             const SizedBox(height: 12),
             Wrap(spacing: 8, children: [
@@ -527,6 +595,28 @@ class _ManagerHomeState extends State<ManagerHome> {
                               ],
                               if (loading) ...[
                                 const LinearProgressIndicator(),
+                                const SizedBox(height: 12),
+                              ],
+                              if (inventory?['legacy_manager_present'] == true) ...[
+                                Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Wrap(
+                                      spacing: 12, runSpacing: 8,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        const Icon(Icons.info_outline),
+                                        Text(t('legacy_present')),
+                                        OutlinedButton.icon(
+                                          onPressed: busy == null
+                                              ? _retireLegacyManager : null,
+                                          icon: const Icon(Icons.delete_outline),
+                                          label: Text(t('legacy_remove')),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                               ],
                               if (!loading && fms.isEmpty)
