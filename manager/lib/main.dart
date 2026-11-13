@@ -183,6 +183,7 @@ class _ManagerHomeState extends State<ManagerHome> {
     setState(() => busy = '$manager/$slug');
     try {
       var installDependencies = true;
+      var approveExternal = false;
       Map<String, dynamic>? plan;
       if (!remove) {
         plan = await _cli('plan', ['--fm', manager, '--slug', slug]);
@@ -192,6 +193,8 @@ class _ManagerHomeState extends State<ManagerHome> {
       final missing = List<String>.from(dependencyInfo['missing'] as List? ?? []);
       final packages = List<String>.from(dependencyInfo['packages'] as List? ?? []);
       final unresolved = List<String>.from(dependencyInfo['unresolved'] as List? ?? []);
+      final externalTools = List<String>.from(
+          dependencyInfo['external_tools'] as List? ?? []);
       final conflicts = List<String>.from(plan?['conflicts'] as List? ?? []);
       final confirmed = await showDialog<bool>(
         context: context,
@@ -229,6 +232,25 @@ class _ManagerHomeState extends State<ManagerHome> {
                         Text('${t('missing')}: ${unresolved.join(', ')}',
                             style: TextStyle(color: Theme.of(context).colorScheme.error)),
                       ],
+                      if (externalTools.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Text(t('external_tools'),
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 6),
+                        SelectableText(externalTools.join(', ')),
+                        const SizedBox(height: 8),
+                        Text(t('ai_download_warning'),
+                            style: Theme.of(context).textTheme.bodySmall),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          value: approveExternal,
+                          title: Text(t('approve_external_download')),
+                          onChanged: (value) => updateDialog(
+                            () => approveExternal = value ?? false,
+                          ),
+                        ),
+                      ],
                       if (conflicts.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text('${t('conflicts')}: ${conflicts.join(', ')}',
@@ -258,6 +280,7 @@ class _ManagerHomeState extends State<ManagerHome> {
               ),
               FilledButton(
                 onPressed: (!remove && (unresolved.isNotEmpty || conflicts.isNotEmpty ||
+                    (externalTools.isNotEmpty && !approveExternal) ||
                     (missing.isNotEmpty && !installDependencies)))
                     ? null
                     : () => Navigator.pop(dialogContext, true),
