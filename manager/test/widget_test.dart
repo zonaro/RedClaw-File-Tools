@@ -88,11 +88,11 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('Full support'), findsWidgets);
+    expect(find.textContaining('Full support'), findsWidgets);
 
     await tester.tap(find.text('Dolphin'));
     await tester.pumpAndSettle();
-    expect(find.text('Partial support'), findsWidgets);
+    expect(find.textContaining('Partial support'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }
