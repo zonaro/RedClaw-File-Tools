@@ -6,8 +6,7 @@ on:
     paths:
       - 'manager/**'
       - 'backend/**'
-      - 'scripts/build-appimage.sh'
-      - 'scripts/redclaw-file-tools.desktop'
+      - 'scripts/**'
       - 'assets/redclaw-file-tools.svg'
       - '.github/workflows/appimage-release.yml'
   workflow_dispatch:
