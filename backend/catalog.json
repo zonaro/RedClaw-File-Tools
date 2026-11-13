@@ -580,49 +580,6 @@
       "conflicts": []
     },
     {
-      "id": "extensions-manager",
-      "name": "Extensions Manager",
-      "category": "Management",
-      "files": [
-        "extensions-manager.py"
-      ],
-      "dependencies": [],
-      "portable_actions": [],
-      "compatibility": {
-        "nautilus": {
-          "support": "full",
-          "recommendation": "redundant",
-          "reason": "The dedicated RedClaw manager replaces this management menu."
-        },
-        "dolphin": {
-          "support": "unsupported",
-          "recommendation": "incompatible",
-          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
-        },
-        "nemo": {
-          "support": "unsupported",
-          "recommendation": "incompatible",
-          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
-        },
-        "caja": {
-          "support": "unsupported",
-          "recommendation": "incompatible",
-          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
-        },
-        "thunar": {
-          "support": "unsupported",
-          "recommendation": "incompatible",
-          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
-        },
-        "pcmanfm-qt": {
-          "support": "unsupported",
-          "recommendation": "incompatible",
-          "reason": "This extension uses Nautilus-specific APIs and has not been ported."
-        }
-      },
-      "conflicts": []
-    },
-    {
       "id": "extract-here",
       "name": "Extract Here",
       "category": "Archives",
